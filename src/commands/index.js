@@ -3,7 +3,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sleep, randInt } from '../utils.js';
-import { markCodeSent } from '../afk.js';
+import { bumpRequest } from '../requestMetrics.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -183,7 +183,7 @@ function maybePruneRateBuckets(now) {
     return;
   }
   lastRatePruneAt = now;
-  pruneRateBuckets(now);
+  pruneRateBuckets();
 }
 
 const ratePruneTimer = setInterval(() => pruneRateBuckets(), RATE_PRUNE_TIMER_MS);
@@ -235,12 +235,12 @@ function checkRateLimit(userId, commandName, rlCfg) {
   return { allowed: true };
 }
 
-async function safeReply(msg, text) {
+async function safeReply(msg, text, markCode) {
   if (typeof msg?.reply !== 'function') return null;
   try {
     const sent = await msg.reply(String(text ?? '').slice(0, MAX_REPLY_CHARS));
     if (sent?.id) {
-      try { markCodeSent(sent.id); } catch {}
+      try { markCode?.(sent.id); } catch {}
     }
     return sent;
   } catch {
@@ -256,8 +256,9 @@ function printConsoleReply(logger, text) {
 }
 
 export function buildDispatcher(ctx) {
-  const { config, logger, stats, session } = ctx;
+  const { config, logger, stats, session, acct } = ctx;
   const rlCfg = config.commands?.rateLimit || {};
+  const markCode = (id) => acct?.afk?.markCodeSent?.(id);
 
   return async ({ name, args, msg, client, source }) => {
     stats?.bump('commandsReceived');
@@ -279,7 +280,7 @@ export function buildDispatcher(ctx) {
 
         if (!rlCfg.silentOnLimit && msg?.reply) {
           const sec = Math.ceil(rl.waitMs / 1000);
-          await safeReply(msg, `⏳ Chờ ${sec}s`);
+          await safeReply(msg, `⏳ Chờ ${sec}s`, markCode);
         }
         return;
       }
@@ -298,7 +299,7 @@ export function buildDispatcher(ctx) {
       logger.debug(`Unknown: ${name}${suggestion ? ` (gợi ý: ${suggestion})` : ''}`);
       const lines = [base];
       if (suggestion) lines.push(`Có phải ý bạn là .${suggestion}?`);
-      await safeReply(msg, lines.join('\n'));
+      await safeReply(msg, lines.join('\n'), markCode);
       return;
     }
 
@@ -313,13 +314,17 @@ export function buildDispatcher(ctx) {
       const anti = config.antiDetection || {};
       const delay = randInt(anti.reactDelayMinMs ?? 200, anti.reactDelayMaxMs ?? 800);
       await sleep(delay);
-      await safeReply(msg, body);
+      await safeReply(msg, body, markCode);
     };
 
     const startedAt = Date.now();
     try {
       await handler.handler({
         name, args, msg, client, config, logger, stats, session, source,
+        acct,
+        getAccounts: ctx.getAccounts,
+        getFocusedId: ctx.getFocusedId,
+        focusAccount: ctx.focusAccount,
         reply: replyFn,
       });
     } catch (e) {
@@ -331,13 +336,14 @@ export function buildDispatcher(ctx) {
     }
 
     stats?.bump('commandsExecuted');
+    bumpRequest('discord');
     const ms = Date.now() - startedAt;
     const argText = Array.isArray(args) ? args.join(' ') : '';
     logger.cmd(`OK ${name}${argText ? ` ${argText}` : ''} (${source}, ${ms}ms)`);
   };
 }
 
-export function startConsole({ dispatcher, config, logger, getClient }) {
+export function startConsole({ getDispatcher, config, logger }) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -356,7 +362,12 @@ export function startConsole({ dispatcher, config, logger, getClient }) {
     logger.cmd(`> ${name} ${args.join(' ')}`);
 
     try {
-      await dispatcher({ name, args, msg: null, client: getClient(), source: 'console' });
+      const dispatcher = getDispatcher?.();
+      if (!dispatcher) {
+        logger.warn('Chưa có account nào sẵn sàng');
+        return;
+      }
+      await dispatcher({ name, args, msg: null, client: null, source: 'console' });
     } catch (e) {
       logger.error(`Console: ${e.message}`);
     }

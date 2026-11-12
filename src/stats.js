@@ -15,6 +15,8 @@ export function createStats() {
     voiceReconnects: 0,
     streamStarts: 0,
     streamStops: 0,
+    streamWatches: 0,
+    streamWatchStops: 0,
     afkPings: 0,
     afkReplies: 0,
     presenceUpdates: 0,

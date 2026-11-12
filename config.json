@@ -1,16 +1,29 @@
 {
-  "sessionMaxMinutes": 360,
-  "sessionWarnMinutes": 300,
+  "sessionMaxMinutes": 0,
+  "sessionWarnMinutes": 0,
   "sessionAutoStop": true,
   "sessionLogFile": "session.log",
   "dashboard": true,
   "tokenEnv": "DISCORD_TOKEN",
-
+  "web": {
+    "enabled": true,
+    "port": 8787
+  },
+  "accounts": {
+    "startDelayMs": 3000
+  },
+  "health": {
+    "enabled": true,
+    "intervalMs": 10000,
+    "graceMs": 90000,
+    "restartSpacingMs": 1500,
+    "backoffBaseMs": 5000,
+    "backoffMaxMs": 300000
+  },
   "status": {
     "type": "PLAYING",
     "text": "quests"
   },
-
   "commands": {
     "prefix": ".",
     "dmSelfEnabled": true,
@@ -25,7 +38,6 @@
       "silentOnLimit": true
     }
   },
-
   "typingDelay": {
     "baseMinMs": 500,
     "baseMaxMs": 1200,
@@ -34,31 +46,68 @@
     "jitterMinMs": 0,
     "jitterMaxMs": 800
   },
-
   "antiDetection": {
     "reactDelayMinMs": 200,
     "reactDelayMaxMs": 800
   },
-
   "voice": {
     "autoReconnect": true,
     "reconnectMaxAttempts": 3,
     "selfDeaf": true,
     "selfMute": false
   },
-
   "stream": {
     "enabled": true,
-    "width": 1280,
-    "height": 720,
-    "fps": 30,
-    "bitrateKbps": 2500,
+    "width": 640,
+    "height": 360,
+    "fps": 2,
+    "bitrateKbps": 500,
     "preset": "faster",
-    "captureSource": "",
+    "captureSource": "black",
     "captureCursor": true,
-    "restoreVoice": true
+    "restoreVoice": true,
+    "recordDir": "recordings",
+    "autoRestart": true,
+    "autoRestartMax": 5,
+    "autoRestartDelayMs": 10000
   },
-
+  "owo": {
+    "enabled": false,
+    "channelIds": [],
+    "hunt": {
+      "enabled": true,
+      "minMs": 20000,
+      "maxMs": 20000
+    },
+    "quest": {
+      "enabled": true,
+      "minMs": 300000,
+      "maxMs": 300000
+    },
+    "gem": {
+      "enabled": false,
+      "minMs": 1800000,
+      "maxMs": 1800000
+    },
+    "boss": {
+      "enabled": false
+    },
+    "train": {
+      "enabled": false,
+      "minMs": 600000,
+      "maxMs": 900000
+    },
+    "roll": {
+      "enabled": false,
+      "minMs": 300000,
+      "maxMs": 600000
+    },
+    "daily": {
+      "enabled": false,
+      "minMs": 3600000,
+      "maxMs": 7200000
+    }
+  },
   "afk": {
     "cooldownMs": 60000,
     "cooldownMode": "per_user",
@@ -76,6 +125,5 @@
     "silentMode": false,
     "persist": true
   },
-
   "debug": false
 }

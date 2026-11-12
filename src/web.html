@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumina Selfbot — Web</title>
+<link rel="icon" type="image/png" href="/assets/logo-mark.png">
+<style>
+  /* ── Tokens ─────────────────────────────────────── */
+  :root {
+    --bg: #08090c;
+    --bg-2: #0b0d11;
+    --surface: #0f1116;
+    --surface-2: #14171d;
+    --surface-3: #1b1f27;
+    --line: rgba(255, 255, 255, .065);
+    --line-2: rgba(255, 255, 255, .115);
+    --text: #eef0f4;
+    --muted: #8b92a1;
+    --faint: #7c8496;
+    --accent: #b7aeff;
+    --accent-2: #6fd3c2;
+    --accent-ink: #14111f;
+    --accent-soft: rgba(183, 174, 255, .13);
+    --accent-line: rgba(183, 174, 255, .34);
+    --green: #4ecb8f;
+    --yellow: #e5b45c;
+    --red: #f0737a;
+    --green-soft: rgba(78, 203, 143, .12);
+    --yellow-soft: rgba(229, 180, 92, .12);
+    --red-soft: rgba(240, 115, 122, .12);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px rgba(0, 0, 0, .28);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --ring: 0 0 0 3px var(--accent-soft);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --log-bg: #0b0d12;
+    --log-text: #aab2c2;
+    --nav-active: rgba(255, 255, 255, .055);
+    --mark: url("/assets/logo-mark.png");
+    --aurora-1: rgba(111, 211, 194, .07);
+    --aurora-2: rgba(183, 174, 255, .08);
+    color-scheme: dark;
+  }
+  html[data-theme="light"] {
+    --bg: #f6f7fa;
+    --bg-2: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f5f6fa;
+    --surface-3: #eceef5;
+    --line: rgba(15, 20, 36, .085);
+    --line-2: rgba(15, 20, 36, .15);
+    --text: #10131a;
+    --muted: #5f6779;
+    --faint: #6a7284;
+    --accent: #5b4fd6;
+    --accent-2: #2b9c8e;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(91, 79, 214, .10);
+    --accent-line: rgba(91, 79, 214, .30);
+    --green: #1f9259;
+    --yellow: #9a6d0a;
+    --red: #cc3d45;
+    --green-soft: rgba(31, 146, 89, .09);
+    --yellow-soft: rgba(154, 109, 10, .09);
+    --red-soft: rgba(204, 61, 69, .08);
+    --shadow: 0 1px 2px rgba(16, 22, 40, .06), 0 14px 34px rgba(16, 22, 40, .07);
+    --shadow-sm: 0 1px 2px rgba(16, 22, 40, .05);
+    --log-bg: #f7f8fb;
+    --log-text: #3b4453;
+    --nav-active: #e9ebf3;
+    --aurora-1: rgba(43, 156, 142, .07);
+    --aurora-2: rgba(91, 79, 214, .06);
+    color-scheme: light;
+  }
+
+  /* ── Base ───────────────────────────────────────── */
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 13.5px/1.55 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--accent-soft); color: var(--text); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  input, textarea { caret-color: var(--accent); }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  svg { flex: none; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-2); border-radius: 99px;
+    border: 2px solid transparent; background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  code, .mono { font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; font-size: .94em; }
+
+  /* ── Shell ──────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 234px minmax(0, 1fr); min-height: 100vh; }
+
+  .rail {
+    position: sticky; top: 0; z-index: 30;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    gap: 16px;
+    padding: 16px 12px 12px;
+    background: var(--bg-2);
+    border-right: 1px solid var(--line);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 9px;
+    padding: 2px 8px 0; min-width: 0;
+  }
+  .logo {
+    width: 28px; height: 28px; border-radius: 9px; overflow: hidden; flex: none;
+    box-shadow: 0 0 0 1px var(--line-2), 0 2px 6px rgba(0, 0, 0, .3);
+  }
+  .logo img { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .wordmark { min-width: 0; line-height: 1.15; }
+  .wordmark b { display: block; font-size: 13.5px; font-weight: 650; letter-spacing: -.01em; }
+  .wordmark span { display: block; font-size: 11px; color: var(--faint); letter-spacing: .02em; }
+
+  .nav { display: flex; flex-direction: column; gap: 1px; }
+  .nav-label {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600; padding: 0 10px; margin: 6px 0 5px;
+  }
+  .tab {
+    display: flex; align-items: center; gap: 9px;
+    height: 31px; padding: 0 10px; width: 100%;
+    background: none; border: 0; border-radius: 7px;
+    color: var(--muted); font-size: 13px; text-align: left;
+    transition: background .13s ease, color .13s ease;
+  }
+  .tab svg { width: 15px; height: 15px; opacity: .78; transition: color .13s ease, opacity .13s ease; }
+  .tab:hover { background: var(--surface-2); color: var(--text); }
+  .tab:hover svg { opacity: 1; }
+  .tab.active {
+    background: var(--nav-active); color: var(--text); font-weight: 600;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .tab.active svg { color: var(--accent); opacity: 1; }
+  .tab:active { transform: translateY(.5px); }
+
+  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding: 0 2px; }
+  .conn {
+    display: flex; align-items: center; gap: 8px; min-width: 0;
+    padding: 8px 10px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--line);
+  }
+  .conn .meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail-actions { display: flex; gap: 6px; }
+  #acctSel {
+    flex: 1 1 auto; min-width: 0; height: 30px; padding: 0 26px 0 10px;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    font-size: 12.5px; cursor: pointer;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--faint) 50%), linear-gradient(135deg, var(--faint) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 13px, calc(100% - 10px) 13px;
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+  }
+  #acctSel:hover { border-color: var(--line-2); }
+  #acctSel:disabled { opacity: .45; cursor: default; }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dot.on { background: var(--green); box-shadow: 0 0 0 0 rgba(78, 203, 143, .5); animation: pulse 2.6s ease-out infinite; }
+  .dot.off { background: var(--red); }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(78, 203, 143, .45); }
+    60% { box-shadow: 0 0 0 6px rgba(78, 203, 143, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(78, 203, 143, 0); }
+  }
+
+  /* ── Content column ─────────────────────────────── */
+  .main { position: relative; min-width: 0; }
+  .main::before {
+    content: ''; position: absolute; inset: 0 0 auto; height: 340px; pointer-events: none;
+    background:
+      radial-gradient(680px 260px at 12% -40px, var(--aurora-2), transparent 70%),
+      radial-gradient(520px 220px at 86% -60px, var(--aurora-1), transparent 72%);
+  }
+  .topbar {
+    position: relative; z-index: 1;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+    max-width: 1140px; margin: 0 auto;
+    padding: 30px 32px 0;
+  }
+  .page-head { min-width: 0; }
+  .page-head h1 {
+    margin: 0; font-size: 21px; font-weight: 650;
+    letter-spacing: -.022em; line-height: 1.25;
+  }
+  .page-head p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+  .top-right { display: flex; align-items: center; gap: 10px; padding-bottom: 3px; }
+  .meta { color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  main {
+    position: relative; z-index: 1;
+    max-width: 1140px; margin: 0 auto;
+    padding: 20px 32px 80px;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; animation: rise .28s cubic-bezier(.16, 1, .3, 1); }
+  @keyframes rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+
+  .grid { display: grid; gap: 14px; align-items: start; }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .grid.side { grid-template-columns: minmax(0, 1.3fr) minmax(280px, .85fr); }
+  .grid + .grid, .grid + section.card, section.card + .grid { margin-top: 14px; }
+  @media (max-width: 900px) { .grid.side { grid-template-columns: 1fr; } }
+
+  /* ── Cards ──────────────────────────────────────── */
+  section.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 15px 17px 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  section.card:last-child { margin-bottom: 0; }
+  section.card h2 {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 10px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); font-weight: 650;
+  }
+  section.card h2 .hint {
+    margin-left: auto; text-transform: none; letter-spacing: 0;
+    font-weight: 400; font-size: 12px; color: var(--faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── Metrics strip ──────────────────────────────── */
+  .tiles {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .tile { position: relative; padding: 13px 16px 14px; min-width: 0; }
+  .tile + .tile { border-left: 1px solid var(--line); }
+  .tile .label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+  .t-icon { display: grid; place-items: center; color: var(--accent); opacity: .85; }
+  .t-icon svg { width: 13px; height: 13px; }
+  .tile .value {
+    font-size: 22px; font-weight: 650; letter-spacing: -.03em; line-height: 1.2;
+    margin-top: 5px; font-variant-numeric: tabular-nums;
+  }
+  .tile .sub { font-size: 12px; color: var(--faint); margin-top: 1px; }
+  .tile.good .value { color: var(--green); }
+  .tile.warn .value { color: var(--yellow); }
+  .tile.bad .value { color: var(--red); }
+
+  .stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .stack > section.card { margin-bottom: 0; }
+
+  /* ── Forms ──────────────────────────────────────── */
+  .row { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .row + .row { margin-top: 7px; }
+  .grow { flex: 1 1 140px; min-width: 0; }
+
+  button {
+    height: 31px; padding: 0 12px;
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--line-2); border-radius: var(--radius-sm);
+    font-size: 12.5px; font-weight: 550; white-space: nowrap; cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+    transition: background .13s ease, border-color .13s ease, color .13s ease, box-shadow .13s ease, transform .1s ease;
+  }
+  button:hover:not(:disabled) { background: var(--surface-3); border-color: var(--line-2); }
+  button:active:not(:disabled) { transform: translateY(.5px); box-shadow: none; }
+  button:disabled { opacity: .42; cursor: default; }
+  button.primary {
+    background: var(--accent); color: var(--accent-ink); border-color: transparent;
+    font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 1px 2px rgba(0, 0, 0, .35);
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.06); }
+  button.danger { color: var(--red); }
+  button.danger:hover:not(:disabled) { background: var(--red-soft); border-color: rgba(240, 115, 122, .4); }
+  button.ghost { background: transparent; border-color: transparent; box-shadow: none; }
+  button.ghost:hover:not(:disabled) { background: var(--surface-2); border-color: var(--line); }
+  button.small { height: 26px; padding: 0 9px; font-size: 12px; border-radius: 6px; }
+  button.icon { width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-radius: 8px; }
+  button.icon svg { width: 15px; height: 15px; }
+  .ico-sun { display: none; }
+  html[data-theme="light"] .ico-sun { display: block; }
+  html[data-theme="light"] .ico-moon { display: none; }
+
+  select, input[type="text"], input[type="number"], input[type="password"], textarea {
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    padding: 0 10px; height: 31px; width: 100%; font-size: 12.5px;
+    transition: border-color .13s ease, box-shadow .13s ease, background .13s ease;
+  }
+  textarea { height: auto; padding: 8px 10px; resize: vertical; min-height: 62px; line-height: 1.5; }
+  select:hover, input:hover:not(:disabled), textarea:hover { border-color: var(--line-2); }
+  select:focus, input:focus, textarea:focus {
+    border-color: var(--accent-line); box-shadow: var(--ring); outline: none; background: var(--surface);
+  }
+  input::placeholder, textarea::placeholder { color: var(--faint); opacity: .85; }
+  select { cursor: pointer; appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--faint) 50%), linear-gradient(135deg, var(--faint) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 13.5px, calc(100% - 10px) 13.5px;
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+    padding-right: 26px;
+  }
+
+  label.field { display: block; margin-bottom: 9px; }
+  label.field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 0 12px; }
+  .check { display: inline-flex; align-items: center; gap: 7px; margin: 4px 14px 4px 0; font-size: 12.5px; cursor: pointer; }
+  .check input { width: auto; height: auto; accent-color: var(--accent); }
+
+  /* ── Key/value rows ─────────────────────────────── */
+  .kv {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+    padding: 7px 0; border-bottom: 1px solid var(--line);
+  }
+  section.card > .kv:last-of-type, .stats-grid .kv:last-child { border-bottom: 0; }
+  .kv .k { color: var(--muted); flex: none; font-size: 12.5px; }
+  .kv .v {
+    text-align: right; overflow-wrap: anywhere; font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kv .v.good { color: var(--green); }
+  .kv .v.bad { color: var(--red); }
+  .kv .v.warn { color: var(--yellow); }
+  .kv .v.accent { color: var(--accent); }
+
+  /* ── Badges ─────────────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 20px; padding: 0 7px; border-radius: 6px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+    border: 1px solid var(--line-2); color: var(--muted); background: var(--surface-2);
+  }
+  .badge.live, .badge.err { color: var(--red); border-color: rgba(240, 115, 122, .32); background: var(--red-soft); }
+  .badge.watch, .badge.accent { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+  .badge.afk { color: var(--yellow); border-color: rgba(229, 180, 92, .32); background: var(--yellow-soft); }
+  .badge.good { color: var(--green); border-color: rgba(78, 203, 143, .32); background: var(--green-soft); }
+
+  /* ── Quest log ──────────────────────────────────── */
+  .quest-row .left { align-items: flex-start; }
+  .quest-row .left > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .quest-row .qbar {
+    width: 120px; height: 6px; border-radius: 999px; flex: none;
+    background: var(--surface-3); overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .16);
+  }
+  .quest-row .qbar i {
+    display: block; height: 100%; width: 0; border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width .35s ease;
+  }
+  .quest-row .qbar i.done { background: var(--green); }
+  .quest-row .sub.wait { color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .notice {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    margin-top: 10px; padding: 10px 12px; border-radius: 9px;
+    border: 1px solid var(--line-2); background: var(--surface-2);
+    font-size: 12.5px; line-height: 1.5;
+  }
+  .notice[hidden] { display: none; }
+  .notice.bad { border-color: rgba(240, 115, 122, .38); background: var(--red-soft); }
+  .notice .n-title { display: block; font-weight: 600; margin-bottom: 2px; }
+  .notice.bad .n-title { color: var(--red); }
+  .notice .n-text { display: block; color: var(--muted); overflow-wrap: anywhere; }
+  .notice a.n-link {
+    flex: none; align-self: center; font-weight: 600; color: var(--red);
+    text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+  }
+  .notice a.n-link:hover { filter: brightness(1.08); }
+
+  .acct-add { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+  .acct-add input { width: 100%; }
+  .acct-add button { align-self: flex-start; padding: 0 18px; }
+  .acct-note { color: var(--faint); font-size: 12px; margin-top: 9px; }
+
+  .msg { font-size: 12px; min-height: 17px; margin-top: 7px; color: var(--muted); overflow-wrap: anywhere; }
+  .msg:empty { display: none; }
+  .msg.err { color: var(--red); }
+  .msg.ok { color: var(--green); }
+
+  /* ── Lists ──────────────────────────────────────── */
+  .list { margin: 2px -8px 0; display: flex; flex-direction: column; }
+  .item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px; border-radius: 8px;
+    transition: background .13s ease;
+  }
+  .item + .item { box-shadow: inset 0 1px 0 var(--line); }
+  .item:hover { background: var(--surface-2); }
+  .item .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .item .who { font-size: 12.5px; overflow-wrap: anywhere; }
+  .item .right { display: flex; align-items: center; gap: 6px; flex: none; }
+  .item .sub { color: var(--muted); font-size: 12px; }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 8px; flex: none;
+    background: var(--accent-soft); border: 1px solid var(--accent-line);
+    display: grid; place-items: center;
+  }
+  .avatar .mark {
+    width: 16px; height: 16px; background: var(--accent);
+    -webkit-mask-image: var(--mark); mask-image: var(--mark);
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+  }
+  .avatar.bad { background: var(--red-soft); border-color: rgba(240, 115, 122, .3); }
+  .avatar.bad .mark { background: var(--red); }
+  .empty {
+    display: flex; align-items: center; gap: 9px;
+    color: var(--faint); font-size: 12.5px; padding: 16px 8px;
+  }
+  .empty::before {
+    content: ''; width: 20px; height: 20px; flex: none;
+    background: var(--faint); opacity: .5;
+    -webkit-mask-image: var(--mark); mask-image: var(--mark);
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  }
+
+  /* ── RPC preview ────────────────────────────────── */
+  .preview {
+    position: relative;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px;
+  }
+  .preview .p-head { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+  .preview .avatar {
+    width: 38px; height: 38px; border-radius: 10px; display: block;
+    object-fit: cover; border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+  }
+  .preview .p-name { font-weight: 600; font-size: 13px; }
+  .preview .p-type { font-size: 11px; color: var(--faint); }
+  .preview .p-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .preview .p-line { font-size: 12.5px; color: var(--muted); }
+  .preview .p-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .preview .p-btn {
+    font-size: 12px; padding: 3px 9px; border-radius: 6px;
+    background: var(--surface-3); border: 1px solid var(--line);
+  }
+  .preview .p-time { font-size: 12px; color: var(--faint); margin-top: 9px; }
+
+  /* ── Log ────────────────────────────────────────── */
+  .logbox {
+    background: var(--log-bg); border: 1px solid var(--line); border-radius: 10px;
+    height: 62vh; min-height: 300px; overflow-y: auto; padding: 10px 13px;
+    font: 12px/1.7 "Cascadia Mono", Consolas, ui-monospace, monospace;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .02);
+  }
+  .logbox div { color: var(--log-text); }
+  .logbox div[class] { padding-left: 8px; border-left: 2px solid transparent; margin-left: -10px; }
+  .logbox div.err { border-left-color: var(--red); background: linear-gradient(90deg, var(--red-soft), transparent 60%); }
+  .logbox div.warn { border-left-color: var(--yellow); background: linear-gradient(90deg, var(--yellow-soft), transparent 60%); }
+  .logbox .empty { font-family: "Segoe UI", system-ui, sans-serif; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0 18px; }
+  .stats-grid .kv { padding: 6px 0; font-size: 12.5px; }
+  .stats-grid .kv .v { font-weight: 600; }
+
+  #toasts { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 7px; z-index: 50; }
+  .toast {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--line-2); border-radius: 9px;
+    box-shadow: var(--shadow); padding: 9px 13px; font-size: 12.5px; max-width: 340px;
+    animation: toast-in .26s cubic-bezier(.16, 1, .3, 1);
+  }
+  .toast::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+  .toast.err::before { background: var(--red); }
+  .toast.ok::before { background: var(--green); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  /* ── Màn hình hẹp ───────────────────────────────── */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .rail {
+      position: static; height: auto; gap: 10px; min-width: 0;
+      padding: 12px 14px; border-right: 0; border-bottom: 1px solid var(--line);
+    }
+    .nav { flex-direction: row; overflow-x: auto; gap: 2px; scrollbar-width: none; padding-bottom: 2px; min-width: 0; }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav-label { display: none; }
+    .tab { width: auto; flex: none; padding: 0 9px; }
+    .rail-foot { margin-top: 0; flex-direction: row; align-items: center; gap: 8px; padding: 0; }
+    .conn { flex: 1 1 auto; min-width: 0; padding: 6px 9px; }
+    .rail-actions { flex: none; width: auto; }
+    #acctSel { width: 130px; }
+    .topbar { padding: 18px 16px 0; }
+    main { padding: 14px 16px 56px; }
+  }
+  @media (max-width: 720px) {
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile:nth-child(3) { border-left: 0; }
+    .tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
+    .item { flex-wrap: wrap; }
+    .item .left { flex: 1 1 100%; }
+    .item .right { flex: 1 1 100%; flex-wrap: wrap; }
+  }
+  @media (max-width: 620px) {
+    .topbar { align-items: flex-start; flex-direction: column; gap: 8px; }
+    .top-right { padding: 0; }
+    .page-head h1 { font-size: 18px; }
+    .brand .wordmark span { display: none; }
+    section.card { padding: 13px 14px 14px; }
+    .tile .value { font-size: 20px; }
+    .badge { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <span class="logo"><img src="/assets/logo.jpg" alt=""></span>
+      <div class="wordmark"><b>Lumina</b><span>selfbot</span></div>
+    </div>
+
+    <nav class="nav" id="tabs" aria-label="Điều hướng">
+      <div class="nav-label">Bảng điều khiển</div>
+      <button class="tab active" data-tab="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="3" width="7.4" height="7.4" rx="2"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="2"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="2"/><rect x="13.6" y="13.6" width="7.4" height="7.4" rx="2"/></svg>
+        Tổng quan
+      </button>
+      <button class="tab" data-tab="voice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.6" width="6" height="11" rx="3"/><path d="M5.6 11.2a6.4 6.4 0 0 0 12.8 0M12 17.6v3.8"/></svg>
+        Voice
+      </button>
+      <button class="tab" data-tab="stream">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><path d="M8.1 8.1a5.5 5.5 0 0 0 0 7.8M15.9 15.9a5.5 5.5 0 0 0 0-7.8M5.2 5.2a9.6 9.6 0 0 0 0 13.6M18.8 18.8a9.6 9.6 0 0 0 0-13.6"/></svg>
+        Stream
+      </button>
+      <button class="tab" data-tab="watch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M2.6 12S6.2 5.6 12 5.6 21.4 12 21.4 12 17.8 18.4 12 18.4 2.6 12 2.6 12z"/><circle cx="12" cy="12" r="2.7"/></svg>
+        Xem stream
+      </button>
+      <button class="tab" data-tab="afk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20.2 14.6A8.5 8.5 0 0 1 9.4 3.8a8.5 8.5 0 1 0 10.8 10.8z"/></svg>
+        AFK
+      </button>
+      <button class="tab" data-tab="owo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="8" width="15.2" height="11" rx="3.4"/><path d="M12 4.4V8M8.8 12.6h.01M15.2 12.6h.01M9.6 15.8h4.8"/></svg>
+        OwO Farm
+      </button>
+      <button class="tab" data-tab="rpc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3.4l1.9 4.5 4.5 1.9-4.5 1.9L12 16.2l-1.9-4.5L5.6 9.8l4.5-1.9z"/><path d="M18.4 15.2l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg>
+        Rich Presence
+      </button>
+      <button class="tab" data-tab="snipe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="7.4"/><path d="M12 2.6v3.8M12 17.6v3.8M2.6 12h3.8M17.6 12h3.8"/></svg>
+        Snipe
+      </button>
+      <button class="tab" data-tab="log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="4" width="18.8" height="16" rx="2.4"/><path d="M6.6 9.2l2.8 2.8-2.8 2.8M12.6 14.8h4.8"/></svg>
+        Log
+      </button>
+    </nav>
+
+    <div class="rail-foot">
+      <div class="conn">
+        <span class="dot" id="dot"></span>
+        <span class="meta" id="meta">Đang kết nối...</span>
+      </div>
+      <div class="rail-actions">
+        <select id="acctSel" title="Đổi account đang điều khiển"></select>
+        <button class="icon ghost" id="themeBtn" title="Đổi sáng/tối" aria-label="Đổi sáng/tối">
+          <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.6v2M12 19.4v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.6 12h2M19.4 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+          <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20.2 14.4A8.4 8.4 0 0 1 9.6 3.8a8.4 8.4 0 1 0 10.6 10.6z"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-head">
+        <h1 id="pageTitle">Tổng quan</h1>
+        <p id="pageSub">Trạng thái bot, tài khoản và số liệu phiên</p>
+      </div>
+      <div class="top-right"><span class="meta" id="pingmeta"></span></div>
+    </header>
+
+<main>
+
+  <!-- ── TỔNG QUAN ───────────────────────────────── -->
+  <div class="panel active" data-panel="overview">
+    <div class="tiles">
+      <div class="tile" id="tilePing">
+        <div class="label"><span class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3.4l2.6 6 4-14 2.6 8H21"/></svg></span>Ping</div>
+        <div class="value">—</div><div class="sub">gateway</div>
+      </div>
+      <div class="tile" id="tileUptime">
+        <div class="label"><span class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.1 1.9"/></svg></span>Uptime</div>
+        <div class="value">—</div><div class="sub">phiên hiện tại</div>
+      </div>
+      <div class="tile" id="tileSession">
+        <div class="label"><span class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h10M7 20.5h10M8 3.5v3c0 2 4 4.3 4 5.5s-4 3.5-4 5.5v3M16 3.5v3c0 2-4 4.3-4 5.5s4 3.5 4 5.5v3"/></svg></span>Session</div>
+        <div class="value">—</div><div class="sub">còn bao lâu</div>
+      </div>
+      <div class="tile" id="tileGuilds">
+        <div class="label"><span class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6.4" rx="2"/><rect x="3" y="13.6" width="18" height="6.4" rx="2"/><path d="M7 7.2h.01M7 16.8h.01"/></svg></span>Sever</div>
+        <div class="value">—</div><div class="sub">đang vào</div>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <section class="card">
+        <h2>Trạng thái</h2>
+        <div class="kv"><span class="k">Voice</span><span class="v" id="ovVoice">—</span></div>
+        <div class="kv"><span class="k">Stream</span><span class="v" id="ovStream">—</span></div>
+        <div class="kv"><span class="k">Xem stream</span><span class="v" id="ovWatch">—</span></div>
+        <div class="kv"><span class="k">AFK</span><span class="v" id="ovAfk">—</span></div>
+        <div class="kv"><span class="k">OwO farm</span><span class="v" id="ovOwo">—</span></div>
+        <div class="kv"><span class="k">Rich Presence</span><span class="v" id="ovRpc">—</span></div>
+        <div class="kv"><span class="k">Tài khoản</span><span class="v" id="ovUser">—</span></div>
+      </section>
+
+      <div class="stack">
+        <section class="card">
+          <h2>Thao tác nhanh</h2>
+          <div class="row">
+            <button class="primary" id="qaStream">Go Live</button>
+            <button id="qaVoice">Vào voice</button>
+            <button id="qaWatch">Xem stream</button>
+            <button id="qaAfk">Bật/Tắt AFK</button>
+            <button class="ghost" id="qaReload">RPC reload</button>
+          </div>
+          <div class="msg" id="ovMsg"></div>
+        </section>
+
+        <section class="card">
+          <h2>Thêm account</h2>
+          <div class="acct-add">
+          <input type="text" id="acctName" placeholder="Tên (tuỳ chọn)" maxlength="32" autocomplete="off" spellcheck="false">
+          <input type="password" id="acctToken" placeholder="Token Discord" autocomplete="off" spellcheck="false">
+          <button class="primary" id="acctAdd">Thêm</button>
+          </div>
+          <div class="msg" id="acctMsg"></div>
+          <div class="acct-note">Token lưu vào accounts.json trong thư mục dự án.</div>
+        </section>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Tài khoản <span class="hint" id="acctCount"></span> <span class="hint" id="acctHealth"></span></h2>
+      <div class="list" id="acctList"><div class="empty">Đang tải...</div></div>
+      <div class="acct-note">Chuyển account chỉ đổi account đang điều khiển — các account khác vẫn chạy bình thường.</div>
+    </section>
+
+    <section class="card">
+      <h2>Số liệu phiên</h2>
+      <div class="stats-grid" id="statsGrid"></div>
+    </section>
+  </div>
+
+  <!-- ── VOICE ────────────────────────────────────── -->
+  <div class="panel" data-panel="voice">
+    <div class="grid two">
+      <section class="card">
+        <h2>Đang ở voice</h2>
+        <div class="kv"><span class="k">Trạng thái</span><span class="v" id="voiceNow">—</span></div>
+        <div class="kv"><span class="k">Sever</span><span class="v" id="voiceGuild">—</span></div>
+        <div class="kv"><span class="k">Kênh</span><span class="v" id="voiceChan">—</span></div>
+        <div class="kv"><span class="k">Reconnect</span><span class="v" id="voiceRecon">0</span></div>
+        <div class="kv"><span class="k">Lỗi cuối</span><span class="v" id="voiceErr">—</span></div>
+      </section>
+
+      <section class="card">
+        <h2>Điều khiển</h2>
+        <div class="row">
+          <select id="guildSel" class="grow"></select>
+          <button class="small" id="reloadGuilds">Tải lại</button>
+        </div>
+        <div class="row">
+          <select id="chanSel" class="grow"></select>
+          <button class="primary" id="joinBtn">Vào voice</button>
+          <button class="danger" id="leaveBtn">Rời voice</button>
+        </div>
+        <div class="msg" id="voiceMsg"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ── STREAM ───────────────────────────────────── -->
+  <div class="panel" data-panel="stream">
+    <div class="grid two">
+      <section class="card">
+        <h2>Go Live — hình đen</h2>
+        <div class="kv"><span class="k">Trạng thái</span><span class="v" id="streamState">—</span></div>
+        <div class="kv"><span class="k">Sever / kênh</span><span class="v" id="streamChan">—</span></div>
+        <div class="kv"><span class="k">Người xem</span><span class="v" id="streamViewers">0</span></div>
+        <div class="kv"><span class="k">Thời lượng</span><span class="v" id="streamDur">—</span></div>
+        <div class="kv"><span class="k">Region</span><span class="v" id="streamRegion">—</span></div>
+        <div class="kv"><span class="k">Lỗi cuối</span><span class="v" id="streamErr">—</span></div>
+        <div class="row" style="margin-top:12px">
+          <button class="primary" id="streamStart">Bắt đầu</button>
+          <button class="danger" id="streamStop">Dừng</button>
+          <button id="streamPause">Tạm dừng</button>
+        </div>
+        <div class="msg" id="streamMsg"></div>
+      </section>
+
+      <section class="card">
+        <h2>Ghi chú</h2>
+        <div class="kv"><span class="k">Nguồn</span><span class="v" id="noteSource">—</span></div>
+        <div class="kv"><span class="k">Kích thước</span><span class="v" id="noteSize">—</span></div>
+        <div class="kv"><span class="k">FPS</span><span class="v" id="noteFps">—</span></div>
+        <div class="kv"><span class="k">Bitrate</span><span class="v" id="noteBitrate">—</span></div>
+        <div class="kv"><span class="k">Âm thanh</span><span class="v" id="noteAudio">—</span></div>
+        <p class="msg" style="margin-top:12px">
+          Stream dùng native voice stack của thư viện nên Discord có thể chặn do DAVE/E2EE.
+          Nếu báo lỗi join, thử lại hoặc đổi sang `.voice` (vẫn dùng voice thường).
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ── XEM STREAM ───────────────────────────────── -->
+  <div class="panel" data-panel="watch">
+    <div class="grid two">
+      <section class="card">
+        <h2>Đang xem</h2>
+        <div class="kv"><span class="k">Người stream</span><span class="v" id="watchWho">—</span></div>
+        <div class="kv"><span class="k">Sever / kênh</span><span class="v" id="watchWhere">—</span></div>
+        <div class="kv"><span class="k">Thời lượng</span><span class="v" id="watchDur">—</span></div>
+        <div class="kv"><span class="k">File ghi</span><span class="v" id="watchFile">—</span></div>
+        <div class="row" style="margin-top:12px">
+          <button class="danger" id="unwatchBtn">Dừng xem</button>
+        </div>
+        <div class="msg" id="watchMsg"></div>
+      </section>
+
+      <section class="card">
+        <h2>Tìm người stream <span class="hint" id="watchScope">—</span></h2>
+        <div class="row">
+          <select id="watchGuild" class="grow"></select>
+          <button class="primary" id="whoBtn">Tìm người stream</button>
+          <button class="small" id="reloadGuilds2">Tải lại sever</button>
+        </div>
+        <div class="list" id="streamerList"><div class="empty">Chọn sever rồi bấm "Tìm người stream"</div></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ── AFK ──────────────────────────────────────── -->
+  <div class="panel" data-panel="afk">
+    <div class="grid two">
+      <section class="card">
+        <h2>Trạng thái</h2>
+        <div class="kv"><span class="k">AFK</span><span class="v" id="afkState">—</span></div>
+        <div class="kv"><span class="k">Lý do</span><span class="v" id="afkReasonView">—</span></div>
+        <div class="kv"><span class="k">Đã ping / đã trả lời</span><span class="v" id="afkCounts">0 / 0</span></div>
+        <div class="kv"><span class="k">Cooldown</span><span class="v" id="afkCooldown">—</span></div>
+        <div class="kv"><span class="k">Chế độ</span><span class="v" id="afkMode">—</span></div>
+        <div class="row" style="margin-top:12px">
+          <input type="text" id="afkReason" placeholder="Lý do (không bắt buộc)" maxlength="200" class="grow">
+          <button class="primary" id="afkOn">Bật</button>
+          <button class="danger" id="afkOff">Tắt</button>
+        </div>
+        <div class="msg" id="afkMsg"></div>
+      </section>
+
+      <section class="card">
+        <h2>Top người ping</h2>
+        <div class="list" id="afkTop"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ── OWO FARM ─────────────────────────────────── -->
+  <div class="panel" data-panel="owo">
+    <div class="grid two">
+      <section class="card">
+        <h2>Farm OwO <span class="hint" id="owoStateHint">—</span></h2>
+        <div class="kv"><span class="k">Trạng thái</span><span class="v" id="owoState">—</span></div>
+        <div class="kv"><span class="k">Dừng vì</span><span class="v" id="owoPause">—</span></div>
+        <div class="kv"><span class="k">Channel farm</span><span class="v" id="owoChanView">—</span></div>
+        <div class="kv"><span class="k">Chạy kế tiếp</span><span class="v" id="owoNext">—</span></div>
+        <div class="kv"><span class="k">Lệnh gần nhất</span><span class="v" id="owoLastSent">—</span></div>
+        <div class="kv"><span class="k">Lỗi cuối</span><span class="v" id="owoErr">—</span></div>
+        <div class="notice bad" id="owoCaptcha" hidden>
+          <div>
+            <span class="n-title">OwO yêu cầu captcha</span>
+            <span class="n-text" id="owoCaptchaText">Giải tay trong server rồi bấm "Bật farm".</span>
+          </div>
+          <a class="n-link" id="owoCaptchaLink" target="_blank" rel="noreferrer" hidden>Mở ảnh captcha</a>
+        </div>
+        <label class="field" style="margin-top:12px"><span>Channel ID (nhiều channel cách nhau bằng dấu phẩy)</span>
+          <input type="text" id="owoChannels" placeholder="123456789012345678, 234567890123456789"></label>
+        <div class="row">
+          <button class="primary" id="owoStart">Bật farm</button>
+          <button class="danger" id="owoStop">Tắt</button>
+          <button id="owoSave">Lưu cài đặt</button>
+        </div>
+        <div class="msg" id="owoMsg"></div>
+        <p class="acct-note">
+          Chỉ gửi lệnh vào channel đã khai báo. Không tự giải captcha và không giả dấu selfbot:
+          gặp captcha hoặc cảnh báo là farm tự dừng — vào server giải tay rồi bấm "Bật farm" lại.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Module &amp; cooldown</h2>
+        <label class="check"><input type="checkbox" id="owoHunt"> Auto hunt — gửi <b>owo h</b></label>
+        <label class="field"><span>Hunt mỗi (giây)</span>
+          <input type="number" id="owoHuntSec" min="15" max="86400" step="1"></label>
+        <label class="check"><input type="checkbox" id="owoQuest"> Auto quest — gửi <b>owo q</b>, đọc quest log, claim thưởng, tự làm quest</label>
+        <label class="field"><span>Quest mỗi (giây)</span>
+          <input type="number" id="owoQuestSec" min="120" max="86400" step="1"></label>
+        <label class="check"><input type="checkbox" id="owoGem"> Auto gem — xem inventory rồi dùng gem mạnh nhất</label>
+        <label class="field"><span>Gem mỗi (giây)</span>
+          <input type="number" id="owoGemSec" min="300" max="86400" step="1"></label>
+        <label class="check"><input type="checkbox" id="owoBoss"> Auto boss — bấm nút Fight khi boss hiện</label>
+      </section>
+    </div>
+
+    <div class="grid two">
+      <section class="card">
+        <h2>Số liệu</h2>
+        <div class="stats-grid" id="owoCounters"></div>
+      </section>
+
+      <section class="card">
+        <h2>Gần đây</h2>
+        <div class="list" id="owoEvents"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Quest log <span class="hint" id="owoQuestHint">—</span></h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="small" id="owoQuestRefetch">Đọc quest log</button>
+        <button class="small" id="owoQuestRun">Làm quest ngay</button>
+      </div>
+      <div class="list" id="owoQuests"></div>
+      <div class="msg" id="owoQuestMsg"></div>
+      <p class="acct-note">
+        "Đọc quest log" gửi <b>owo q</b> ngay; "Làm quest ngay" chạy các quest đang sẵn sàng.
+        Quest cần bạn bè (action, cookie, curse, prayer, battle) tự nhờ acc phụ đang online
+        trong panel, gửi trong cùng channel farm. Chưa có acc phụ thì mấy quest đó chờ.
+      </p>
+    </section>
+  </div>
+
+  <!-- ── RICH PRESENCE ────────────────────────────── -->
+  <div class="panel" data-panel="rpc">
+    <div class="grid side">
+      <section class="card">
+        <h2>Trạng thái RPC <span class="hint" id="rpcStateHint">—</span></h2>
+        <div class="row" style="margin-bottom:10px">
+          <button class="primary" id="rpcSave">Lưu &amp; áp dụng</button>
+          <button id="rpcReloadBtn">Reload từ file</button>
+          <button class="danger" id="rpcOffBtn">Tắt RPC</button>
+        </div>
+
+        <div class="fields">
+          <label class="field"><span>Tên hiển thị (application_name)</span>
+            <input type="text" id="rpcName" maxlength="128" placeholder="Đang xem Discord"></label>
+          <label class="field"><span>Loại</span>
+            <select id="rpcType">
+              <option>PLAYING</option><option>STREAMING</option><option>LISTENING</option>
+              <option>WATCHING</option><option>COMPETING</option><option>CUSTOM</option>
+            </select></label>
+          <label class="field"><span>Trạng thái</span>
+            <select id="rpcStatus">
+              <option>online</option><option>idle</option><option>dnd</option><option>invisible</option>
+            </select></label>
+          <label class="field"><span>Dòng phụ (details)</span>
+            <input type="text" id="rpcDetails" maxlength="128" placeholder="Có thể dùng {user} {ping} {uptime}"></label>
+          <label class="field"><span>Dòng phụ 2 (state)</span>
+            <input type="text" id="rpcStateText" maxlength="128" placeholder="Có thể dùng {guilds} {date} {clock}"></label>
+          <label class="field"><span>Stream URL (khi type = STREAMING)</span>
+            <input type="text" id="rpcStreamUrl" placeholder="https://..."></label>
+          <label class="field"><span>Bắt đầu</span>
+            <input type="text" id="rpcStart" placeholder="now / now+30m / 2026-01-01T10:00:00Z"></label>
+          <label class="field"><span>Kết thúc</span>
+            <input type="text" id="rpcEnd" placeholder="now+2h / 2026-01-01T12:00:00Z"></label>
+          <label class="field"><span>Chế độ timestamp</span>
+            <select id="rpcTimeMode">
+              <option value="start">start</option><option value="end">end</option><option value="both">both</option>
+            </select></label>
+          <label class="field"><span>Party hiện tại</span>
+            <input type="number" id="rpcPartyCur" min="0" max="999" placeholder="0"></label>
+          <label class="field"><span>Party tối đa</span>
+            <input type="number" id="rpcPartyMax" min="0" max="999" placeholder="0"></label>
+          <label class="field"><span>Party ID</span>
+            <input type="text" id="rpcPartyId" maxlength="128"></label>
+          <label class="field"><span>Button 1 — nhãn</span>
+            <input type="text" id="rpcBtn1Label" maxlength="32"></label>
+          <label class="field"><span>Button 1 — URL</span>
+            <input type="text" id="rpcBtn1Url" placeholder="https://..."></label>
+          <label class="field"><span>Button 2 — nhãn</span>
+            <input type="text" id="rpcBtn2Label" maxlength="32"></label>
+          <label class="field"><span>Button 2 — URL</span>
+            <input type="text" id="rpcBtn2Url" placeholder="https://..."></label>
+          <label class="field"><span>Ảnh lớn (large_image)</span>
+            <input type="text" id="rpcLargeImage" placeholder="mp: tên asset / URL"></label>
+          <label class="field"><span>Chữ ảnh lớn</span>
+            <input type="text" id="rpcLargeText" maxlength="128"></label>
+          <label class="field"><span>Ảnh nhỏ (small_image)</span>
+            <input type="text" id="rpcSmallImage" placeholder="mp: tên asset / URL"></label>
+          <label class="field"><span>Chữ ảnh nhỏ</span>
+            <input type="text" id="rpcSmallText" maxlength="128"></label>
+          <label class="field"><span>Refresh (giây)</span>
+            <input type="number" id="rpcRefresh" min="0" max="3600" placeholder="60"></label>
+        </div>
+
+        <label class="check"><input type="checkbox" id="rpcEnabled"> Bật RPC</label>
+        <label class="check"><input type="checkbox" id="rpcHotReload"> Tự reload khi sửa rpc.json</label>
+        <label class="check"><input type="checkbox" id="rpcApplyOnReady"> Áp dụng ngay khi bot khởi động</label>
+        <label class="check"><input type="checkbox" id="rpcTemplates"> Cho phép biến {user} {ping} {uptime} {guilds} {date} {clock}</label>
+        <div class="msg" id="rpcMsg"></div>
+      </section>
+
+      <div>
+        <section class="card">
+          <h2>Xem trước</h2>
+          <div class="preview" id="rpcPreview"></div>
+        </section>
+        <section class="card">
+          <h2>Gợi ý biến</h2>
+          <div class="kv"><span class="k">Tài khoản</span><span class="v">{user} {tag} {id}</span></div>
+          <div class="kv"><span class="k">Trạng thái bot</span><span class="v">{ping} {guilds} {uptime} {status}</span></div>
+          <div class="kv"><span class="k">Thời gian</span><span class="v">{clock} {date}</span></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SNIPE ────────────────────────────────────── -->
+  <div class="panel" data-panel="snipe">
+    <section class="card">
+      <h2>Xem tin bị xoá / bị sửa</h2>
+      <div class="row">
+        <select id="snipeGuild" class="grow"></select>
+        <select id="snipeChannel" class="grow"></select>
+        <button class="primary" id="snipeLoad">Tải</button>
+      </div>
+      <div class="msg" id="snipeMsg"></div>
+    </section>
+    <div class="grid two">
+      <section class="card">
+        <h2>Tin bị xoá</h2>
+        <div class="list" id="snipeDeleted"><div class="empty">Chọn channel rồi bấm "Tải"</div></div>
+      </section>
+      <section class="card">
+        <h2>Tin bị sửa</h2>
+        <div class="list" id="snipeEdited"><div class="empty">Chọn channel rồi bấm "Tải"</div></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ── LOG ──────────────────────────────────────── -->
+  <div class="panel" data-panel="log">
+    <section class="card">
+      <h2>Log trực tiếp <span class="hint" id="logCount">0 dòng</span></h2>
+      <div class="row" style="margin-bottom:10px">
+        <input type="text" id="logSearch" class="grow" placeholder="Lọc theo nội dung...">
+        <label class="check" style="margin:0"><input type="checkbox" id="logAuto" checked> Tự cuộn</label>
+        <button class="small" id="logClear">Xoá màn hình</button>
+      </div>
+      <div class="logbox" id="logbox" aria-live="polite"></div>
+    </section>
+  </div>
+
+</main>
+  </div>
+</div>
+
+
+<div id="toasts"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  let logCursor = 0;
+  let guilds = [];
+  let lastStatus = null;
+  let rpcLoaded = false;
+  let owoLoaded = false;
+  let acctId = '';
+
+  // ── Theme ───────────────────────────────────────
+  const THEME_KEY = 'lumina-theme';
+  function applyTheme(theme, save = true) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const btn = $('themeBtn');
+    if (btn) btn.title = theme === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối';
+    if (save) { try { localStorage.setItem(THEME_KEY, theme); } catch {} }
+  }
+  (function initTheme() {
+    const q = new URLSearchParams(location.search).get('theme');
+    if (q === 'light' || q === 'dark') { applyTheme(q, false); return; }
+    let t = null;
+    try { t = localStorage.getItem(THEME_KEY); } catch {}
+    if (!t) t = window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    applyTheme(t, false);
+  })();
+  $('themeBtn').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── Tabs ────────────────────────────────────────
+  const TAB_KEY = 'lumina-tab';
+  const PAGE_META = {
+    overview: ['Tổng quan', 'Trạng thái bot, tài khoản và số liệu phiên'],
+    voice: ['Voice', 'Vào / rời kênh thoại và theo dõi kết nối'],
+    stream: ['Stream', 'Go Live bằng hình đen, xem người xem và thời lượng'],
+    watch: ['Xem stream', 'Tìm người đang stream trong sever và xem lại file ghi'],
+    afk: ['AFK', 'Tự trả lời khi có người ping, kèm lý do và cooldown'],
+    owo: ['OwO Farm', 'Tự hunt, quest (claim thưởng), gem, boss theo cooldown — dừng khi gặp captcha'],
+    rpc: ['Rich Presence', 'Sửa trạng thái hiển thị và xem trước ngay'],
+    snipe: ['Snipe', 'Tin nhắn bị xoá hoặc bị sửa gần đây'],
+    log: ['Log', 'Log trực tiếp từ bot, lọc theo từ khoá'],
+  };
+  function showTab(name, updateHash = true) {
+    if (!name) name = 'overview';
+    for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.tab === name);
+    for (const p of document.querySelectorAll('.panel')) p.classList.toggle('active', p.dataset.panel === name);
+    const meta = PAGE_META[name] || PAGE_META.overview;
+    const pt = document.getElementById('pageTitle');
+    const ps = document.getElementById('pageSub');
+    if (pt) pt.textContent = meta[0];
+    if (ps) ps.textContent = meta[1];
+    document.title = 'Lumina — ' + meta[0];
+    try { localStorage.setItem(TAB_KEY, name); } catch {}
+    if (updateHash) {
+      try { history.replaceState(null, '', '#' + name); } catch {}
+    }
+    if (name === 'rpc') loadRpcForm();
+    if (name === 'watch') maybeLoadStreamers();
+    if (name === 'owo') {
+      owoLoaded = false;
+      if (lastStatus?.owo) { loadOwoForm(lastStatus.owo); refreshOwo(lastStatus.owo); }
+    }
+  }
+  for (const t of document.querySelectorAll('.tab')) {
+    t.addEventListener('click', () => showTab(t.dataset.tab));
+  }
+  window.addEventListener('hashchange', () => {
+    const h = location.hash.slice(1);
+    if (h) showTab(h, false);
+  });
+  {
+    const h = location.hash.slice(1);
+    let saved = null;
+    try { saved = localStorage.getItem(TAB_KEY); } catch {}
+    showTab(h || saved || 'overview', false);
+  }
+
+  // ── Helpers ─────────────────────────────────────
+  function fmtDur(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h) return h + 'h ' + m + 'm';
+    if (m) return m + 'm ' + s + 's';
+    return s + 's';
+  }
+  function setVal(id, v) { const el = $(id); if (el) el.textContent = String(v ?? '—'); }
+  function setKv(id, text, cls) {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'v' + (cls ? ' ' + cls : '');
+  }
+
+  function toast(text, kind) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (kind ? ' ' + kind : '');
+    t.textContent = text;
+    $('toasts').appendChild(t);
+    setTimeout(() => t.remove(), 4200);
+  }
+
+  function withAcct(path) {
+    if (!acctId) return path;
+    const sep = path.includes('?') ? '&' : '?';
+    return path + sep + 'acct=' + encodeURIComponent(acctId);
+  }
+
+  async function apiGet(path) {
+    const r = await fetch(withAcct(path));
+    return r.json().catch(() => ({ ok: false, error: 'HTTP ' + r.status }));
+  }
+  async function apiPost(path, body) {
+    const payload = Object.assign({}, body || {});
+    if (acctId) payload.acct = acctId;
+    const r = await fetch(withAcct(path), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-lumina': 'web' },
+      body: JSON.stringify(payload),
+    });
+    return r.json().catch(() => ({ ok: false, error: 'HTTP ' + r.status }));
+  }
+
+  // ── Vẽ danh sách account ────────────────────────────
+  let lastAccounts = [];
+  let lastFocusedId = '';
+
+  function renderAccounts(list, focusedId, selectedId) {
+    lastAccounts = Array.isArray(list) ? list : [];
+    lastFocusedId = focusedId || '';
+    const sel = $('acctSel');
+    if (sel) {
+      sel.textContent = '';
+      if (!list || !list.length) {
+        const o = document.createElement('option');
+        o.textContent = 'Chưa có account';
+        sel.appendChild(o);
+        sel.disabled = true;
+      } else {
+        sel.disabled = false;
+        for (const a of list) {
+          const o = document.createElement('option');
+          o.value = a.id;
+          o.textContent = a.name + (a.ready ? '' : ' (lỗi)');
+          sel.appendChild(o);
+        }
+        const target = selectedId || focusedId || (list[0] && list[0].id);
+        if (target) sel.value = target;
+      }
+    }
+
+    const cnt = $('acctCount');
+    if (cnt) {
+      const total = (list || []).length;
+      const live = (list || []).filter((a) => a.ready).length;
+      cnt.textContent = total ? `${live}/${total} đang chạy` : '';
+    }
+
+    const box = $('acctList');
+    if (!box) return;
+    box.textContent = '';
+    if (!list || !list.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = 'Chưa có account — thêm token vào tokens.txt hoặc accounts.json';
+      box.appendChild(d);
+      return;
+    }
+
+    for (const a of list) {
+      const item = document.createElement('div');
+      item.className = 'item';
+
+      const left = document.createElement('div');
+      left.className = 'left';
+      const av = document.createElement('span');
+      av.className = 'avatar' + (a.ready ? '' : ' bad');
+      const mk = document.createElement('i');
+      mk.className = 'mark';
+      av.appendChild(mk);
+      const l = document.createElement('div');
+      l.className = 'who';
+      l.textContent = a.name + ' · ' + a.id;
+      left.appendChild(av);
+      left.appendChild(l);
+
+      const right = document.createElement('div');
+      right.className = 'right';
+
+      if (a.ready) {
+        const run = document.createElement('span');
+        run.className = 'badge good';
+        run.textContent = 'đang chạy';
+        right.appendChild(run);
+        const tag = document.createElement('span');
+        tag.className = 'badge';
+        tag.textContent = a.user?.tag || 'online';
+        right.appendChild(tag);
+        if (a.restarts) {
+          const rs = document.createElement('span');
+          rs.className = 'badge';
+          rs.title = 'Số lần tự đăng nhập lại';
+          rs.textContent = 'restart ' + a.restarts;
+          right.appendChild(rs);
+        }
+      } else {
+        const bad = document.createElement('span');
+        bad.className = 'badge err';
+        bad.textContent = a.error || 'lỗi';
+        right.appendChild(bad);
+        const retry = document.createElement('button');
+        retry.className = 'small';
+        retry.textContent = 'Thử lại';
+        retry.title = 'Đăng nhập lại account này';
+        retry.addEventListener('click', () => { void retryAccount(a); });
+        right.appendChild(retry);
+      }
+
+      if (a.id === focusedId) {
+        const mark = document.createElement('span');
+        mark.className = 'badge accent';
+        mark.textContent = 'đang focus';
+        right.appendChild(mark);
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'small';
+        btn.textContent = 'Chuyển';
+        btn.addEventListener('click', () => { void switchAccount(a.id); });
+        right.appendChild(btn);
+      }
+
+      const del = document.createElement('button');
+      const isPending = pendingRemove === a.id;
+      del.className = 'small' + (isPending ? ' danger' : ' ghost');
+      del.textContent = isPending ? 'Xác nhận?' : 'Xoá';
+      del.title = 'Xoá account + token khỏi file lưu trữ';
+      del.addEventListener('click', () => { void removeAccount(a); });
+      right.appendChild(del);
+
+      item.appendChild(left);
+      item.appendChild(right);
+      box.appendChild(item);
+    }
+  }
+
+  let pendingRemove = '';
+
+  function setNote(id, text) {
+    const el = $(id);
+    if (!el) return;
+    el.classList.remove('err', 'ok');
+    el.textContent = text || '';
+  }
+
+  async function addAccount() {
+    const name = $('acctName').value.trim();
+    const token = $('acctToken').value.trim();
+    if (!token) {
+      setMsg('acctMsg', { ok: false, error: 'Cần nhập token Discord' });
+      return;
+    }
+
+    const btn = $('acctAdd');
+    btn.disabled = true;
+    setNote('acctMsg', 'Đang đăng nhập…');
+
+    let res = null;
+    try { res = await apiPost('/api/accounts', { name, token }); }
+    catch (e) { res = { ok: false, error: e.message }; }
+
+    btn.disabled = false;
+    $('acctToken').value = '';
+    setMsg('acctMsg', res);
+    if (res?.ok) await pollStatus();
+  }
+
+  async function removeAccount(a) {
+    if (pendingRemove !== a.id) {
+      pendingRemove = a.id;
+      setTimeout(() => {
+        if (pendingRemove === a.id) pendingRemove = '';
+      }, 5000);
+      renderAccounts(lastAccounts, lastFocusedId, acctId);
+      return;
+    }
+
+    pendingRemove = '';
+    const res = await apiPost('/api/accounts/remove', { id: a.id });
+    setMsg('acctMsg', res);
+    if (res?.ok) await pollStatus();
+  }
+
+  $('acctAdd').addEventListener('click', () => { void addAccount(); });
+  $('acctToken').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { void addAccount(); }
+  });
+
+  async function retryAccount(a) {
+    let res = null;
+    try { res = await apiPost('/api/accounts/retry', { id: a.id }); }
+    catch (e) { res = { ok: false, error: e.message }; }
+    setMsg('acctMsg', res);
+    if (res?.ok) { toast(res.message || 'Đã đăng nhập lại', 'ok'); await pollStatus(); }
+    else toast(res?.error || 'Không đăng nhập lại được', 'err');
+  }
+
+  async function switchAccount(id) {
+    if (!id) return;
+    const res = await apiPost('/api/accounts/focus', { id });
+    if (!res?.ok) {
+      toast(res?.error || 'Không chuyển được account', 'err');
+      return;
+    }
+    acctId = id;
+    rpcLoaded = false;
+    owoLoaded = false;
+    guilds = [];
+    await loadGuilds();
+    await loadRpcForm(true);
+    await pollStatus();
+    toast('Đang điều khiển: ' + id, 'ok');
+  }
+
+  $('acctSel').addEventListener('change', (e) => {
+    void switchAccount(e.target.value);
+  });
+
+  function setMsg(id, res) {
+    const el = $(id);
+    if (!el) return;
+    el.classList.remove('err', 'ok');
+    if (res?.ok) { el.textContent = res.message || 'Đã xong'; el.classList.add('ok'); }
+    else { el.textContent = 'Lỗi: ' + (res?.error || 'không rõ'); el.classList.add('err'); }
+  }
+
+  async function act(button, msgId, fn) {
+    if (button) button.disabled = true;
+    let res = null;
+    try { res = await fn(); }
+    catch (e) { res = { ok: false, error: e.message }; }
+    if (msgId) setMsg(msgId, res);
+    if (res?.ok && res.message) toast(res.message, 'ok');
+    else if (res && !res.ok && res.error) toast(res.error, 'err');
+    if (button) button.disabled = false;
+    await pollStatus();
+    return res;
+  }
+
+  // ── Guilds / channels ───────────────────────────
+  async function loadGuilds() {
+    const res = await apiGet('/api/guilds');
+    guilds = res.ok ? (res.guilds || []) : [];
+
+    for (const selId of ['guildSel', 'snipeGuild', 'watchGuild']) {
+      const sel = $(selId);
+      if (!sel) continue;
+      const prev = sel.value;
+      sel.textContent = '';
+      if (!guilds.length) {
+        const o = document.createElement('option');
+        o.textContent = lastStatus?.loggedIn ? 'Không có sever' : 'Chưa đăng nhập';
+        sel.appendChild(o);
+        sel.disabled = true;
+      } else {
+        sel.disabled = false;
+        for (const g of guilds) {
+          const o = document.createElement('option');
+          o.value = g.id;
+          o.textContent = g.name;
+          sel.appendChild(o);
+        }
+        if (prev && guilds.some((g) => g.id === prev)) sel.value = prev;
+      }
+    }
+    fillVoiceChannels();
+    loadSnipeChannels();
+    maybeLoadStreamers();
+  }
+
+  function fillVoiceChannels() {
+    const sel = $('chanSel');
+    const g = guilds.find((x) => x.id === $('guildSel').value);
+    sel.textContent = '';
+    if (!g || !g.channels.length) {
+      const o = document.createElement('option');
+      o.textContent = g ? 'Không có kênh voice' : '—';
+      sel.appendChild(o);
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    for (const c of g.channels) {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name;
+      sel.appendChild(o);
+    }
+  }
+
+  $('guildSel').addEventListener('change', fillVoiceChannels);
+  $('snipeGuild').addEventListener('change', loadSnipeChannels);
+  $('watchGuild').addEventListener('change', () => {
+    setVal('watchScope', guilds.find((g) => g.id === $('watchGuild').value)?.name || '—');
+    whoStreamers();
+  });
+  $('reloadGuilds').addEventListener('click', () => act($('reloadGuilds'), 'voiceMsg', loadGuilds));
+  $('reloadGuilds2').addEventListener('click', () => act($('reloadGuilds2'), 'watchMsg', loadGuilds));
+
+  $('joinBtn').addEventListener('click', () =>
+    act($('joinBtn'), 'voiceMsg', () => apiPost('/api/voice/join', {
+      guildId: $('guildSel').value,
+      channelId: $('chanSel').value,
+    })));
+  $('leaveBtn').addEventListener('click', () =>
+    act($('leaveBtn'), 'voiceMsg', () => apiPost('/api/voice/leave')));
+
+  // ── Stream ──────────────────────────────────────
+  $('streamStart').addEventListener('click', () =>
+    act($('streamStart'), 'streamMsg', () => apiPost('/api/stream/start')));
+  $('streamStop').addEventListener('click', () =>
+    act($('streamStop'), 'streamMsg', () => apiPost('/api/stream/stop')));
+  $('streamPause').addEventListener('click', () =>
+    act($('streamPause'), 'streamMsg', () => apiPost('/api/stream/pause', {
+      paused: !(lastStatus?.stream?.paused),
+    })));
+
+  // ── Watch ───────────────────────────────────────
+  function maybeLoadStreamers() {
+    const panel = document.querySelector('.panel[data-panel="watch"]');
+    if (!panel?.classList.contains('active')) return;
+    if (!guilds.length) return;
+    whoStreamers();
+  }
+
+  async function whoStreamers() {
+    const gid = $('watchGuild').value;
+    const res = await apiGet('/api/stream/who' + (gid ? '?guild=' + encodeURIComponent(gid) : ''));
+    if (!res.ok) return res;
+    const box = $('streamerList');
+    box.textContent = '';
+    setVal('watchScope', res.guildName || '—');
+    if (!res.streamers.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = 'Không ai đang stream ở ' + (res.guildName || 'sever này');
+      box.appendChild(d);
+      return { ok: true, message: 'Không có ai đang stream' };
+    }
+    for (const s of res.streamers) {
+      const item = document.createElement('div');
+      item.className = 'item';
+      const who = document.createElement('div');
+      const l1 = document.createElement('div');
+      l1.className = 'who';
+      l1.textContent = s.name + '  ·  ' + s.channelName + (s.camera ? ' (camera)' : '');
+      const l2 = document.createElement('div');
+      l2.className = 'sub';
+      l2.textContent = s.id;
+      who.appendChild(l1); who.appendChild(l2);
+      const btn = document.createElement('button');
+      btn.className = 'primary';
+      btn.textContent = 'Xem';
+      btn.addEventListener('click', () => act(btn, 'watchMsg', () => apiPost('/api/watch/start', {
+        userId: s.id, guildId: res.guildId,
+      })));
+      item.appendChild(who);
+      item.appendChild(btn);
+      box.appendChild(item);
+    }
+    return { ok: true, message: 'Tìm thấy ' + res.streamers.length + ' stream' };
+  }
+  $('whoBtn').addEventListener('click', () => act($('whoBtn'), 'watchMsg', whoStreamers));
+  $('unwatchBtn').addEventListener('click', () =>
+    act($('unwatchBtn'), 'watchMsg', () => apiPost('/api/watch/stop')));
+
+  // ── AFK ─────────────────────────────────────────
+  $('afkOn').addEventListener('click', () =>
+    act($('afkOn'), 'afkMsg', () => apiPost('/api/afk/on', { reason: $('afkReason').value })));
+  $('afkOff').addEventListener('click', () =>
+    act($('afkOff'), 'afkMsg', () => apiPost('/api/afk/off')));
+
+  // ── OwO farm ────────────────────────────────────
+  function owoPayload() {
+    const sec = (id, fallback) => {
+      const n = Math.round(Number($(id).value) * 1000);
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+    return {
+      channelIds: $('owoChannels').value.split(/[\s,;]+/).filter(Boolean),
+      hunt: { enabled: $('owoHunt').checked, intervalMs: sec('owoHuntSec', 20000) },
+      quest: { enabled: $('owoQuest').checked, intervalMs: sec('owoQuestSec', 300000) },
+      gem: { enabled: $('owoGem').checked, intervalMs: sec('owoGemSec', 1800000) },
+      boss: { enabled: $('owoBoss').checked },
+    };
+  }
+
+  function loadOwoForm(owo) {
+    if (!owo) return;
+    $('owoChannels').value = (owo.channels || []).join(', ');
+    const f = owo.features || {};
+    $('owoHunt').checked = !!f.hunt?.enabled;
+    $('owoQuest').checked = !!f.quest?.enabled;
+    $('owoGem').checked = !!f.gem?.enabled;
+    $('owoBoss').checked = !!f.boss?.enabled;
+    $('owoHuntSec').value = Math.round((f.hunt?.intervalMs || 20000) / 1000);
+    $('owoQuestSec').value = Math.round((f.quest?.intervalMs || 300000) / 1000);
+    $('owoGemSec').value = Math.round((f.gem?.intervalMs || 1800000) / 1000);
+    owoLoaded = true;
+  }
+
+  const OWO_COUNTERS = [
+    ['commands', 'Lệnh đã gửi'],
+    ['hunts', 'Lần hunt'],
+    ['quests', 'Lần quest'],
+    ['gemChecks', 'Lần xem gem'],
+    ['gemsUsed', 'Gem đã dùng'],
+    ['bossClicks', 'Lần đánh boss'],
+    ['catches', 'Bắt được'],
+    ['questsDone', 'Quest xong'],
+    ['claims', 'Claim thưởng'],
+    ['questActions', 'Hành động quest'],
+    ['captchaStops', 'Dừng vì captcha'],
+    ['warnings', 'Cảnh báo'],
+  ];
+
+  function owoNextText(f) {
+    const now = Date.now();
+    const parts = [];
+    for (const [key, label] of [['hunt', 'hunt'], ['quest', 'quest'], ['gem', 'gem']]) {
+      const x = f?.[key];
+      if (!x?.enabled) continue;
+      parts.push(x.nextAt && x.nextAt > now ? label + ' ' + fmtDur((x.nextAt - now) / 1000) : label + ' —');
+    }
+    return parts.length ? parts.join(' · ') : '—';
+  }
+
+  function refreshOwo(owo) {
+    if (!owo) return;
+    const paused = owo.paused || '';
+    const pauseLabel = paused === 'captcha' ? 'captcha' : (paused === 'warning' ? 'cảnh báo' : (paused === 'offline' ? 'mất kết nối' : paused));
+    const state = owo.enabled ? 'ĐANG CHẠY' : (paused ? 'TẠM DỪNG (' + pauseLabel + ')' : 'TẮT');
+    setKv('owoState', state, owo.enabled ? 'good' : (paused ? 'bad' : ''));
+    setVal('owoStateHint', owo.enabled ? 'farm đang chạy' : (paused ? 'khoá vì ' + pauseLabel : 'đang tắt'));
+
+    const lastPause = (owo.events || []).filter((e) => e.kind === 'pause').pop();
+    setKv('owoPause', paused ? (lastPause?.text || pauseLabel) : '—', paused ? 'bad' : '');
+
+    const chans = owo.channels || [];
+    setKv('owoChanView', chans.length ? chans.join(', ') : '— (chưa khai báo)');
+    setKv('owoNext', owoNextText(owo.features || {}));
+    setKv('owoLastSent', owo.lastSentAt ? fmtDur((Date.now() - owo.lastSentAt) / 1000) + ' trước' : '—');
+    setKv('owoErr', owo.lastError || '—', owo.lastError ? 'bad' : '');
+
+    const capBox = $('owoCaptcha');
+    if (capBox) {
+      const cap = owo.captcha || {};
+      const isCaptcha = paused === 'captcha';
+      capBox.hidden = !isCaptcha;
+      if (isCaptcha) {
+        const remain = Math.ceil((Number(cap.cooldownRemainingMs) || 0) / 1000);
+        setVal('owoCaptchaText',
+          'Giải tay trong server rồi bấm "Bật farm"' + (remain > 0 ? ` — hạ nghỉ còn ${fmtDur(remain)}` : '') + '.');
+        const link = $('owoCaptchaLink');
+        const url = String(cap.url || '');
+        const okUrl = /^https?:\/\//i.test(url);
+        link.hidden = !okUrl;
+        if (okUrl) link.href = url;
+      }
+    }
+
+    if (!owoLoaded) loadOwoForm(owo);
+
+    const grid = $('owoCounters');
+    grid.textContent = '';
+    const c = owo.counters || {};
+    for (const [key, label] of OWO_COUNTERS) {
+      const row = document.createElement('div');
+      row.className = 'kv';
+      const k = document.createElement('span'); k.className = 'k'; k.textContent = label;
+      const vv = document.createElement('span'); vv.className = 'v'; vv.textContent = String(c[key] ?? 0);
+      row.appendChild(k); row.appendChild(vv);
+      grid.appendChild(row);
+    }
+
+    const qbox = $('owoQuests');
+    if (qbox) {
+      qbox.textContent = '';
+      const qs = owo.quests || [];
+      const peers = owo.peerNames || [];
+      const peerTxt = peers.length
+        ? 'acc phụ: ' + peers.join(', ')
+        : (owo.peers ? owo.peers + ' acc phụ' : 'chưa có acc phụ');
+      const untilMs = Number(owo.questsUntil) || 0;
+      const untilTxt = untilMs > Date.now()
+        ? 'quest mới sau ' + fmtDur((untilMs - Date.now()) / 1000)
+        : 'chờ quest mới';
+      setVal('owoQuestHint',
+        owo.questsAllDone ? 'xong hết · ' + untilTxt
+          : (qs.length ? `${qs.length} quest · ${peerTxt}` : 'chưa đọc'));
+      if (!qs.length) {
+        const d = document.createElement('div');
+        d.className = 'empty';
+        d.textContent = owo.questsAllDone
+          ? 'Đã xong hết quest — ' + untilTxt
+          : 'Chưa đọc quest log — bấm "Đọc quest log" hoặc bật farm';
+        qbox.appendChild(d);
+      } else {
+        for (const q of qs) {
+          const total = Math.max(1, Number(q.total) || 0);
+          const cur = Math.max(0, Math.min(total, Number(q.current) || 0));
+          const done = cur >= total;
+          const waitMs = done ? 0 : (Number(q.readyInMs) || 0);
+          const row = document.createElement('div');
+          row.className = 'item quest-row';
+          const left = document.createElement('div');
+          left.className = 'left';
+          const wrap = document.createElement('div');
+          const l = document.createElement('div');
+          l.className = 'who';
+          l.textContent = q.label || q.key;
+          wrap.appendChild(l);
+          if (waitMs > 1000) {
+            const sub = document.createElement('div');
+            sub.className = 'sub wait';
+            sub.textContent = 'chờ ' + fmtDur(waitMs / 1000);
+            wrap.appendChild(sub);
+          }
+          left.appendChild(wrap);
+          const right = document.createElement('div');
+          right.className = 'right';
+          const bar = document.createElement('div');
+          bar.className = 'qbar';
+          const fill = document.createElement('i');
+          fill.style.width = Math.round((cur / total) * 100) + '%';
+          if (done) fill.classList.add('done');
+          bar.appendChild(fill);
+          const t = document.createElement('span');
+          t.className = 'badge' + (done ? ' good' : '');
+          t.textContent = cur + '/' + total;
+          right.appendChild(bar);
+          right.appendChild(t);
+          row.appendChild(left);
+          row.appendChild(right);
+          qbox.appendChild(row);
+        }
+      }
+    }
+
+    const box = $('owoEvents');
+    box.textContent = '';
+    const evs = (owo.events || []).slice(-8).reverse();
+    if (!evs.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = 'Chưa có hoạt động nào';
+      box.appendChild(d);
+    } else {
+      const cls = { start: 'good', stop: '', pause: 'err', gem: 'accent', boss: 'watch' };
+      for (const ev of evs) {
+        const item = document.createElement('div');
+        item.className = 'item';
+        const l = document.createElement('div');
+        l.className = 'who';
+        l.textContent = ev.text;
+        const t = document.createElement('span');
+        t.className = 'badge' + (cls[ev.kind] ? ' ' + cls[ev.kind] : '');
+        t.textContent = new Date(ev.at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        item.appendChild(l); item.appendChild(t);
+        box.appendChild(item);
+      }
+    }
+  }
+
+  $('owoSave').addEventListener('click', () =>
+    act($('owoSave'), 'owoMsg', async () => {
+      if (!owoLoaded) return { ok: false, error: 'Đang tải cài đặt — thử lại sau 1 giây' };
+      const res = await apiPost('/api/owo', { action: 'save', ...owoPayload() });
+      if (res?.ok) owoLoaded = false;
+      return res;
+    }));
+
+  $('owoStart').addEventListener('click', () =>
+    act($('owoStart'), 'owoMsg', async () => {
+      if (!owoLoaded) return { ok: false, error: 'Đang tải cài đặt — thử lại sau 1 giây' };
+      const saved = await apiPost('/api/owo', { action: 'save', ...owoPayload() });
+      owoLoaded = false;
+      if (!saved?.ok) return saved;
+      return apiPost('/api/owo', { action: 'start' });
+    }));
+
+  $('owoStop').addEventListener('click', () =>
+    act($('owoStop'), 'owoMsg', () => apiPost('/api/owo', { action: 'stop' })));
+
+  $('owoQuestRefetch').addEventListener('click', () =>
+    act($('owoQuestRefetch'), 'owoQuestMsg', () => apiPost('/api/owo', { action: 'quest-refetch' })));
+
+  $('owoQuestRun').addEventListener('click', () =>
+    act($('owoQuestRun'), 'owoQuestMsg', () => apiPost('/api/owo', { action: 'quest-run' })));
+
+  // ── Quick actions ───────────────────────────────
+  $('qaStream').addEventListener('click', () =>
+    act($('qaStream'), 'ovMsg', async () => {
+      const res = await apiPost('/api/stream/start');
+      showTab('stream');
+      return res;
+    }));
+  $('qaVoice').addEventListener('click', () => showTab('voice'));
+  $('qaWatch').addEventListener('click', () => { showTab('watch'); whoStreamers(); });
+  $('qaAfk').addEventListener('click', () =>
+    act($('qaAfk'), 'ovMsg', async () => {
+      const on = lastStatus?.afk?.enabled;
+      return apiPost(on ? '/api/afk/off' : '/api/afk/on', { reason: '' });
+    }));
+  $('qaReload').addEventListener('click', () =>
+    act($('qaReload'), 'ovMsg', () => apiPost('/api/rpc/reload')));
+
+  // ── RPC form ────────────────────────────────────
+  const RPC_FIELDS = {
+    rpcName: 'application_name', rpcType: 'type', rpcStatus: 'status',
+    rpcDetails: 'details', rpcStateText: 'state', rpcStreamUrl: 'stream_url',
+    rpcStart: 'start_timestamp', rpcEnd: 'end_timestamp', rpcTimeMode: 'timestamp_mode',
+    rpcPartyCur: 'party_current', rpcPartyMax: 'party_max', rpcPartyId: 'party_id',
+    rpcBtn1Label: 'button1_label', rpcBtn1Url: 'button1_url',
+    rpcBtn2Label: 'button2_label', rpcBtn2Url: 'button2_url',
+    rpcLargeImage: 'large_image', rpcLargeText: 'large_text',
+    rpcSmallImage: 'small_image', rpcSmallText: 'small_text',
+    rpcRefresh: 'refreshInterval',
+  };
+  const RPC_CHECKS = {
+    rpcEnabled: 'enabled', rpcHotReload: 'hotReload',
+    rpcApplyOnReady: 'applyOnReady', rpcTemplates: 'templates',
+  };
+  const RPC_NUM = new Set(['party_current', 'party_max', 'refreshInterval']);
+
+  async function loadRpcForm(force) {
+    if (rpcLoaded && !force) return;
+    const res = await apiGet('/api/rpc/config');
+    if (!res.ok) { setMsg('rpcMsg', res); return; }
+    const c = res.config || {};
+    for (const [id, key] of Object.entries(RPC_FIELDS)) {
+      const el = $(id);
+      if (!el) continue;
+      const v = c[key];
+      el.value = v === undefined || v === null ? '' : String(v);
+    }
+    for (const [id, key] of Object.entries(RPC_CHECKS)) {
+      const el = $(id);
+      if (!el) continue;
+      el.checked = key === 'enabled' ? c.enabled !== false : c[key] === true;
+    }
+    rpcLoaded = true;
+    renderRpcPreview();
+  }
+
+  function rpcPayload() {
+    const patch = {};
+    for (const [id, key] of Object.entries(RPC_FIELDS)) {
+      const el = $(id);
+      if (!el) continue;
+      let v = el.value.trim();
+      if (!v) continue;
+      if (RPC_NUM.has(key)) v = Number(v);
+      patch[key] = v;
+    }
+    for (const [id, key] of Object.entries(RPC_CHECKS)) {
+      const el = $(id);
+      if (el) patch[key] = el.checked;
+    }
+    return patch;
+  }
+
+  function parseTs(value) {
+    const s = String(value || '').trim().toLowerCase();
+    if (!s) return null;
+    if (s === 'now') return Date.now();
+    const rel = s.match(/^now\s*([+-])\s*(.+)$/);
+    const inFut = s.match(/^in\s+(.+)$/);
+    const dur = (rest) => {
+      let total = 0, m;
+      const re = /(\d+)\s*(d|h|m|s)/g;
+      while ((m = re.exec(rest))) {
+        const n = Number(m[1]);
+        if (m[2] === 'd') total += n * 86400;
+        else if (m[2] === 'h') total += n * 3600;
+        else if (m[2] === 'm') total += n * 60;
+        else total += n;
+      }
+      return total;
+    };
+    if (rel) return Date.now() + (rel[1] === '-' ? -1 : 1) * dur(rel[2]) * 1000;
+    if (inFut) return Date.now() + dur(inFut[1]) * 1000;
+    const t = Date.parse(s);
+    if (Number.isFinite(t)) return t;
+    const n = Number(s);
+    if (Number.isFinite(n) && n > 0) return n > 1e12 ? n : n * 1000;
+    return null;
+  }
+
+  function renderRpcPreview() {
+    const box = $('rpcPreview');
+    box.textContent = '';
+    const v = (id) => ($(id)?.value || '').trim();
+
+    const head = document.createElement('div');
+    head.className = 'p-head';
+    const av = document.createElement('img');
+    av.className = 'avatar';
+    av.src = '/assets/logo.jpg';
+    av.alt = '';
+    const htxt = document.createElement('div');
+    const nm = document.createElement('div'); nm.className = 'p-name';
+    nm.textContent = lastStatus?.user?.tag || 'Bot';
+    const ty = document.createElement('div'); ty.className = 'p-type';
+    ty.textContent = v('rpcType') + ' · ' + v('rpcStatus');
+    htxt.appendChild(nm); htxt.appendChild(ty);
+    head.appendChild(av); head.appendChild(htxt);
+    box.appendChild(head);
+
+    const title = document.createElement('div');
+    title.className = 'p-title';
+    title.textContent = v('rpcName') || '(chưa đặt tên)';
+    box.appendChild(title);
+
+    for (const id of ['rpcDetails', 'rpcStateText']) {
+      const t = v(id);
+      if (!t) continue;
+      const d = document.createElement('div');
+      d.className = 'p-line';
+      d.textContent = t;
+      box.appendChild(d);
+    }
+
+    const cur = Number(v('rpcPartyCur')), max = Number(v('rpcPartyMax'));
+    if (cur > 0 && max > 0) {
+      const d = document.createElement('div');
+      d.className = 'p-line';
+      d.textContent = 'Party — ' + cur + ' / ' + max;
+      box.appendChild(d);
+    }
+
+    const btns = [];
+    const b1l = v('rpcBtn1Label'), b2l = v('rpcBtn2Label');
+    if (b1l) btns.push(b1l);
+    if (b2l) btns.push(b2l);
+    if (btns.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'p-btns';
+      for (const b of btns) {
+        const el = document.createElement('span');
+        el.className = 'p-btn';
+        el.textContent = b;
+        wrap.appendChild(el);
+      }
+      box.appendChild(wrap);
+    }
+
+    const mode = v('rpcTimeMode');
+    const s = parseTs(v('rpcStart'));
+    const e = parseTs(v('rpcEnd'));
+    const parts = [];
+    if ((mode === 'start' || mode === 'both') && s) parts.push('Bắt đầu ' + new Date(s).toLocaleString('vi-VN'));
+    if ((mode === 'end' || mode === 'both') && e) parts.push('Kết thúc ' + new Date(e).toLocaleString('vi-VN'));
+    if (parts.length) {
+      const d = document.createElement('div');
+      d.className = 'p-time';
+      d.textContent = parts.join('  ·  ');
+      box.appendChild(d);
+    }
+  }
+
+  for (const id of Object.keys(RPC_FIELDS)) {
+    const el = $(id);
+    if (el) el.addEventListener('input', renderRpcPreview);
+  }
+  for (const id of Object.keys(RPC_CHECKS)) {
+    const el = $(id);
+    if (el) el.addEventListener('change', renderRpcPreview);
+  }
+
+  $('rpcSave').addEventListener('click', () =>
+    act($('rpcSave'), 'rpcMsg', async () => {
+      const res = await apiPost('/api/rpc/save', { patch: rpcPayload() });
+      if (res.ok) { rpcLoaded = false; await loadRpcForm(true); }
+      return res;
+    }));
+  $('rpcReloadBtn').addEventListener('click', () =>
+    act($('rpcReloadBtn'), 'rpcMsg', async () => {
+      const res = await apiPost('/api/rpc/reload');
+      if (res.ok) { rpcLoaded = false; await loadRpcForm(true); }
+      return res;
+    }));
+  $('rpcOffBtn').addEventListener('click', () =>
+    act($('rpcOffBtn'), 'rpcMsg', () => apiPost('/api/rpc/off')));
+
+  // ── Snipe ───────────────────────────────────────
+  async function loadSnipeChannels() {
+    const sel = $('snipeChannel');
+    const guildId = $('snipeGuild').value;
+    sel.textContent = '';
+    if (!guildId) { sel.disabled = true; return; }
+    const res = await apiGet('/api/channels?guild=' + encodeURIComponent(guildId));
+    if (!res.ok) { sel.disabled = true; return; }
+    const text = res.channels.filter((c) => c.type === 0 || c.type === 'GUILD_TEXT' || c.type === 'DM' || c.type === 'GUILD_NEWS');
+    const list = text.length ? text : res.channels;
+    if (!list.length) {
+      const o = document.createElement('option');
+      o.textContent = 'Không có channel';
+      sel.appendChild(o);
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    for (const c of list) {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name + ' (' + c.type + ')';
+      sel.appendChild(o);
+    }
+  }
+
+  function renderSnipeList(boxId, entries, kind) {
+    const box = $(boxId);
+    box.textContent = '';
+    if (!entries.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = kind === 'del' ? 'Chưa có tin nào bị xoá trong channel này' : 'Chưa có tin nào bị sửa trong channel này';
+      box.appendChild(d);
+      return;
+    }
+    for (const e of entries) {
+      const item = document.createElement('div');
+      item.className = 'item';
+      const left = document.createElement('div');
+      const l1 = document.createElement('div');
+      l1.className = 'who';
+      const ts = e.deletedAt || e.editedAt || 0;
+      l1.textContent = (e.authorTag || '?') + ' — ' + fmtDur((Date.now() - ts) / 1000) + ' trước';
+      const l2 = document.createElement('div');
+      l2.className = 'sub';
+      const body = kind === 'del' ? (e.content || '(không có text)') : ('"' + (e.oldContent || '') + '" → "' + (e.newContent || '') + '"');
+      l2.textContent = body.slice(0, 160);
+      left.appendChild(l1); left.appendChild(l2);
+      const link = document.createElement('a');
+      link.href = 'https://discord.com/channels/' + (e.guildId || '@me') + '/' + e.channelId + '/' + e.messageId;
+      link.textContent = 'Mở';
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.style.color = 'var(--accent)';
+      link.style.fontSize = '12.5px';
+      item.appendChild(left);
+      item.appendChild(link);
+      box.appendChild(item);
+    }
+  }
+
+  $('snipeLoad').addEventListener('click', () =>
+    act($('snipeLoad'), 'snipeMsg', async () => {
+      const channelId = $('snipeChannel').value;
+      if (!channelId) return { ok: false, error: 'Chọn channel trước' };
+      const res = await apiGet('/api/snipe?channel=' + encodeURIComponent(channelId));
+      if (!res.ok) return res;
+      renderSnipeList('snipeDeleted', res.deleted || [], 'del');
+      renderSnipeList('snipeEdited', res.edited || [], 'edit');
+      return { ok: true, message: 'Đã tải (' + (res.deleted?.length || 0) + ' bị xoá, ' + (res.edited?.length || 0) + ' bị sửa)' };
+    }));
+
+  // ── Log ─────────────────────────────────────────
+  const logbox = $('logbox');
+  let logLines = [];
+
+  function renderLog() {
+    const q = ($('logSearch').value || '').toLowerCase();
+    logbox.textContent = '';
+    let shown = 0;
+    for (const line of logLines) {
+      if (q && !line.toLowerCase().includes(q)) continue;
+      shown++;
+      const d = document.createElement('div');
+      const lv = line.match(/\[(ERR|WARN| DBG|INFO|  OK|  WS|VOICE| CMD)\]/);
+      if (lv) {
+        d.className = lv[1] === 'ERR' ? 'err' : lv[1] === 'WARN' ? 'warn' : '';
+      }
+      d.textContent = line;
+      logbox.appendChild(d);
+    }
+    if (!shown) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = logLines.length
+        ? 'Không có dòng nào khớp với từ khoá'
+        : 'Chưa có log nào — log của bot sẽ hiện ở đây';
+      logbox.appendChild(d);
+    }
+    if ($('logAuto').checked) logbox.scrollTop = logbox.scrollHeight;
+    $('logCount').textContent = shown + ' dòng';
+  }
+
+  $('logSearch').addEventListener('input', renderLog);
+  $('logAuto').addEventListener('change', renderLog);
+  $('logClear').addEventListener('click', () => { logLines = []; renderLog(); });
+
+  async function pollLogs() {
+    try {
+      const res = await apiGet('/api/logs?since=' + logCursor);
+      if (!res.ok) return;
+      logCursor = res.cursor;
+      for (const e of res.lines || []) logLines.push(e.line);
+      if (logLines.length > 800) logLines = logLines.slice(-800);
+      renderLog();
+    } catch {}
+  }
+
+  // ── Status polling ──────────────────────────────
+  const STAT_KEYS = [
+    ['messagesReceived', 'Messages'], ['commandsExecuted', 'Lệnh chạy'],
+    ['commandsFailed', 'Lệnh lỗi'], ['voiceJoins', 'Voice vào'],
+    ['streamStarts', 'Stream bật'], ['streamWatches', 'Xem stream'],
+    ['afkPings', 'AFK ping'], ['afkReplies', 'AFK trả lời'],
+    ['messagesDeleted', 'Tin xoá'], ['errors', 'Lỗi'],
+  ];
+
+  function refreshStatus(s) {
+    if (s) lastStatus = s;
+    s = lastStatus;
+    if (!s) return;
+
+    $('dot').className = 'dot ' + (s.loggedIn ? 'on' : 'off');
+    $('meta').textContent = s.loggedIn
+      ? (s.user?.tag || '?') + '  ·  ' + (s.guildCount || 0) + ' sever'
+      : 'Chưa đăng nhập';
+    $('pingmeta').textContent = s.loggedIn
+      ? 'Ping ' + s.ping + 'ms  ·  Uptime ' + fmtDur((s.stats?.uptimeMs || 0) / 1000)
+      : '';
+
+    // tiles
+    const pingTile = $('tilePing');
+    pingTile.querySelector('.value').textContent = s.loggedIn ? s.ping + 'ms' : '—';
+    pingTile.className = 'tile ' + (!s.loggedIn ? '' : s.ping < 120 ? 'good' : s.ping < 250 ? 'warn' : 'bad');
+    $('tileUptime').querySelector('.value').textContent = fmtDur((s.stats?.uptimeMs || 0) / 1000);
+    $('tileGuilds').querySelector('.value').textContent = String(s.guildCount || 0);
+
+    const ses = s.session;
+    const tileS = $('tileSession');
+    if (ses && ses.unlimited) {
+      tileS.querySelector('.value').textContent = '∞';
+      tileS.querySelector('.sub').textContent = 'không giới hạn';
+      tileS.className = 'tile good';
+    } else if (ses && ses.maxMs > 0) {
+      const pct = Math.min(100, Math.round((ses.elapsed / ses.maxMs) * 100));
+      tileS.querySelector('.value').textContent = pct + '%';
+      tileS.querySelector('.sub').textContent = 'còn ' + fmtDur(Math.max(0, ses.maxMs - ses.elapsed) / 1000);
+      tileS.className = 'tile ' + (pct >= 90 ? 'bad' : pct >= 75 ? 'warn' : 'good');
+    } else {
+      tileS.querySelector('.value').textContent = '—';
+      tileS.className = 'tile';
+    }
+
+    // overview rows
+    const v = s.voice || {};
+    setKv('ovVoice', v.connected ? 'Đang ở voice' : (v.connecting ? 'Đang kết nối' : 'Không ở voice'), v.connected ? 'good' : '');
+    const st = s.stream || {};
+    setKv('ovStream', st.active ? (st.paused ? 'LIVE (tạm dừng)' : 'LIVE') : (st.starting ? 'Đang bắt đầu' : 'Tắt'), st.active ? 'bad' : '');
+    const w = s.watch || {};
+    setKv('ovWatch', (w.active || w.starting) ? 'Đang xem ' + (w.username || w.userId || '') : 'Không xem', w.active ? 'accent' : '');
+    const a = s.afk || {};
+    setKv('ovAfk', a.enabled ? 'BẬT' + (a.reason ? ' — ' + a.reason : '') : 'Tắt', a.enabled ? 'warn' : '');
+    const oo = s.owo || {};
+    setKv('ovOwo', oo.enabled ? 'ĐANG CHẠY' : (oo.paused ? 'Tạm dừng (' + oo.paused + ')' : 'Tắt'), oo.enabled ? 'good' : (oo.paused ? 'bad' : ''));
+    const r = s.rpc || {};
+    setKv('ovRpc', r.enabled ? (r.applied ? 'Bật' : 'Bật (chưa áp dụng)') : 'Tắt', r.enabled ? 'good' : '');
+    setKv('ovUser', s.loggedIn ? (s.user?.tag + ' · ' + s.user?.id) : 'Chưa đăng nhập');
+
+    // accounts
+    if (s.account?.id) acctId = s.account.id;
+    renderAccounts(s.accounts || [], s.focusedId || '', acctId || '');
+
+    const h = s.health;
+    const ah = $('acctHealth');
+    if (ah) {
+      if (!h || !h.enabled) {
+        ah.textContent = 'watchdog tắt';
+      } else {
+        const down = (h.accounts || []).filter((x) => x.downMs > 0).length;
+        ah.textContent =
+          `watchdog ${Math.round(h.intervalMs / 1000)}s · chờ ${Math.round(h.graceMs / 1000)}s` +
+          (down ? ` · ${down} account đang rớt` : '');
+      }
+    }
+
+    // voice panel
+    setKv('voiceNow', v.connected ? 'Đã vào' : (v.connecting ? 'Đang kết nối' : 'Chưa ở voice nào'), v.connected ? 'good' : '');
+    const gName = guilds.find((g) => g.id === v.guildId)?.name || v.guildId || '—';
+    setKv('voiceGuild', gName);
+    setKv('voiceChan', v.channelId || '—');
+    setKv('voiceRecon', String(v.reconnectAttempts || 0));
+    setKv('voiceErr', v.lastError || '—');
+
+    // stream panel
+    setKv('streamState', st.active ? (st.paused ? 'LIVE (tạm dừng)' : 'LIVE') : (st.starting ? 'Đang bắt đầu' : 'Tắt'), st.active ? 'bad' : '');
+    setKv('streamChan', (st.active || st.starting) ? ((st.guildName || st.guildId || '?') + ' / ' + (st.channelName || st.channelId || '?')) : '—');
+    setKv('streamViewers', String(st.viewerCount ?? 0));
+    setKv('streamDur', st.active && st.startedAt ? fmtDur((Date.now() - st.startedAt) / 1000) : '—');
+    setKv('streamRegion', st.region || '—');
+    setKv('streamErr', st.lastError || '—');
+    $('streamPause').textContent = st.paused ? 'Tiếp tục' : 'Tạm dừng';
+
+    // watch panel
+    const wActive = w.active || w.starting;
+    setKv('watchWho', wActive ? (w.username || w.userId || '?') : '—');
+    setKv('watchWhere', wActive ? ((w.guildName || '?') + ' / ' + (w.channelName || '?')) : '—');
+    setKv('watchDur', wActive && w.startedAt ? fmtDur((Date.now() - w.startedAt) / 1000) : '—');
+    setKv('watchFile', w.file || '—');
+    if (wActive) {
+      setVal('watchScope', w.guildName || '—');
+      const wsel = $('watchGuild');
+      if (wsel && w.guildId && guilds.some((g) => g.id === w.guildId)) wsel.value = w.guildId;
+    } else {
+      setVal('watchScope', guilds.find((g) => g.id === $('watchGuild').value)?.name || '—');
+    }
+
+    // afk panel
+    setKv('afkState', a.enabled ? (a.silentMode ? 'BẬT (silent)' : 'BẬT') : 'TẮT', a.enabled ? 'warn' : '');
+    setKv('afkReasonView', a.reason || '—');
+    setKv('afkCounts', (a.totalPings || 0) + ' / ' + (a.totalReplies || 0));
+    const top = $('afkTop');
+    top.textContent = '';
+    if (a.topPingers && a.topPingers.length) {
+      for (const p of a.topPingers) {
+        const item = document.createElement('div');
+        item.className = 'item';
+        const l = document.createElement('div');
+        l.className = 'who';
+        l.textContent = p.tag;
+        const c = document.createElement('span');
+        c.className = 'badge good';
+        c.textContent = '× ' + p.count;
+        item.appendChild(l); item.appendChild(c);
+        top.appendChild(item);
+      }
+    } else {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = 'Chưa có ai ping';
+      top.appendChild(d);
+    }
+
+    // owo panel
+    refreshOwo(s.owo);
+
+    // rpc panel
+    setVal('rpcStateHint', r.enabled ? (r.applied ? 'Đang áp dụng' : 'Chưa áp dụng') : 'Tắt');
+    if (!rpcLoaded) loadRpcForm();
+    else renderRpcPreview();
+
+    // stats
+    const grid = $('statsGrid');
+    grid.textContent = '';
+    for (const [key, label] of STAT_KEYS) {
+      const row = document.createElement('div');
+      row.className = 'kv';
+      const k = document.createElement('span'); k.className = 'k'; k.textContent = label;
+      const vv = document.createElement('span'); vv.className = 'v'; vv.textContent = String(s.stats?.[key] ?? 0);
+      row.appendChild(k); row.appendChild(vv);
+      grid.appendChild(row);
+    }
+  }
+
+  async function pollStatus() {
+    try { refreshStatus(await apiGet('/api/status')); }
+    catch {}
+    if (lastStatus?.loggedIn && !guilds.length) loadGuilds();
+  }
+
+  pollStatus();
+  pollLogs();
+  setInterval(pollStatus, 2000);
+  setInterval(pollLogs, 1500);
+})();
+</script>
+</body>
+</html>

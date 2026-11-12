@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumina — Web</title>
+<link rel="icon" type="image/png" href="/assets/logo-mark.png">
+<style>
+  html { background: #08090c; }
+  html[data-theme="light"] { background: #f6f7fa; }
+</style>
+<script>
+  (function () {
+    try {
+      var q = new URLSearchParams(location.search).get('theme');
+      var t = (q === 'light' || q === 'dark') ? q : null;
+      if (!t) t = localStorage.getItem('lumina-theme');
+      if (t !== 'light' && t !== 'dark') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) { /* giữ mặc định dark */ }
+  })();
+</script>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

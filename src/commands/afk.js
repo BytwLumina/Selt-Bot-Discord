@@ -1,11 +1,3 @@
-import {
-  enableAfk,
-  disableAfk,
-  isAfk,
-  getAfk,
-  getConfig,
-  setConfig,
-} from '../afk.js';
 import { fmtDur } from '../utils.js';
 
 export async function register({ registerCommand }) {
@@ -13,14 +5,15 @@ export async function register({ registerCommand }) {
     category: 'Utility',
     description: 'Bật/tắt AFK tự phản hồi khi bị ping',
     usage: '.afk [reason] | off | status | list | clear',
-    handler: async ({ args, client, reply }) => {
+    handler: async ({ args, client, reply, acct }) => {
+      const afk = acct.afk;
       const arg = args.join(' ').trim();
       const lower = arg.toLowerCase();
 
       // ── .afk status ──────────────────────────────────
       if (lower === 'status' || lower === 'info') {
-        const st = getAfk();
-        const cf = getConfig();
+        const st = afk.getAfk();
+        const cf = afk.getConfig();
         if (!st.enabled) return reply('AFK đang tắt');
 
         let msg =
@@ -42,7 +35,7 @@ export async function register({ registerCommand }) {
 
       // ── .afk list ────────────────────────────────────
       if (lower === 'list') {
-        const st = getAfk();
+        const st = afk.getAfk();
         if (!st.topPingers.length) return reply('Chưa ai ping trong lúc AFK');
         const lines = st.topPingers.map((p, i) =>
           `  ${i + 1}. ${p.tag} × ${p.count} (lần cuối ${fmtDur((Date.now() - p.lastAt) / 1000)} trước)`
@@ -52,33 +45,33 @@ export async function register({ registerCommand }) {
 
       // ── .afk off ─────────────────────────────────────
       if (lower === 'off' || lower === 'clear' || lower === 'stop') {
-        if (!isAfk()) return reply('AFK đang tắt');
-        disableAfk();
+        if (!afk.isAfk()) return reply('AFK đang tắt');
+        afk.disableAfk();
         return reply('✓ Đã tắt AFK');
       }
 
       // ── .afk silent on/off ───────────────────────────
       if (lower === 'silent on') {
-        setConfig({ silentMode: true });
+        afk.setConfig({ silentMode: true });
         return reply('✓ Silent mode ON — chỉ react emoji');
       }
       if (lower === 'silent off') {
-        setConfig({ silentMode: false });
+        afk.setConfig({ silentMode: false });
         return reply('✓ Silent mode OFF');
       }
 
       // ── .afk (no args) ───────────────────────────────
       if (!arg) {
-        if (isAfk()) {
-          disableAfk();
+        if (afk.isAfk()) {
+          afk.disableAfk();
           return reply('✓ Đã tắt AFK');
         }
-        enableAfk('', client.user.id);
+        afk.enableAfk('', client.user.id);
         return reply('✓ Đã bật AFK (không có lý do)');
       }
 
       // ── .afk <reason> ────────────────────────────────
-      enableAfk(arg, client.user.id);
+      afk.enableAfk(arg, client.user.id);
       reply(`✓ Đã bật AFK: ${arg}`);
     },
   });

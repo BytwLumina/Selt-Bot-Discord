@@ -1,27 +1,10 @@
 import fs from 'node:fs';
 import { Client } from 'discord.js-selfbot-v13';
 import { sleep, computeTypingDelay } from './utils.js';
-import {
-  isAfk,
-  disableAfk,
-  shouldIgnore,
-  checkCooldown,
-  recordPing,
-  bumpReplyCount,
-  renderReply,
-  renderBackMessage,
-  isCodeSent,
-  markCodeSent,
-  getConfig as getAfkConfig,
-} from './afk.js';
-import { leaveVoice, getVoiceState } from './voiceSession.js';
-import { isStreaming } from './stream.js';
-import { isPending, cancel, getPendingChannel } from './voiceConfirm.js';
 import { recordDelete, recordEdit } from './snipe.js';
 import { cacheMessage } from './messageCache.js';
-import { getRpcState } from './rpc.js';
 
-export function createSelfbotClient({ config, logger, stats, dispatcher }) {
+export function createSelfbotClient({ config, logger, stats, dispatcher, acct }) {
   const log = logger;
 
   const client = new Client({
@@ -41,8 +24,11 @@ export function createSelfbotClient({ config, logger, stats, dispatcher }) {
     const u = client.user;
     log.ok(`Ready: ${u.tag} (${u.id})`);
     // RPC (nếu bật) sẽ set presence ngay sau ready — tránh ghi đè ngược
-    if (!getRpcState().enabled) {
+    if (!acct.rpc.getRpcState().enabled) {
       applyPresence(client, config, { logger, stats });
+    }
+    if (acct.owo) {
+      try { acct.owo.autoStart(); } catch (e) { log.debug(`OwO autoStart: ${e.message}`); }
     }
   });
 
@@ -104,7 +90,7 @@ export function createSelfbotClient({ config, logger, stats, dispatcher }) {
 
     // 0. Voice confirm handler (yes/no)
     try {
-      const handled = await handleVoiceConfirm(client, msg, config, log, stats);
+      const handled = await handleVoiceConfirm(client, msg, config, log, stats, acct);
       if (handled) return;
     } catch (e) {
       log.debug(`Voice confirm: ${e.message}`);
@@ -120,16 +106,23 @@ export function createSelfbotClient({ config, logger, stats, dispatcher }) {
 
     // 2. Auto-disable AFK
     try {
-      await handleAutoDisable(client, msg, config, log);
+      await handleAutoDisable(client, msg, config, log, acct);
     } catch (e) {
       log.debug(`AFK auto-disable: ${e.message}`);
     }
 
     // 3. AFK ping handler
     try {
-      await handleAfkPing(client, msg, config, log, stats);
+      await handleAfkPing(client, msg, config, log, stats, acct);
     } catch (e) {
       log.debug(`AFK ping: ${e.message}`);
+    }
+
+    // 4. OwO farm replies (captcha watchdog, gem, boss)
+    try {
+      acct.owo?.onMessage?.(msg);
+    } catch (e) {
+      log.debug(`OwO: ${e.message}`);
     }
   });
 
@@ -137,64 +130,64 @@ export function createSelfbotClient({ config, logger, stats, dispatcher }) {
 }
 
 // ── Voice confirm (yes/no) ────────────────────────────────
-async function handleVoiceConfirm(client, msg, config, log, stats) {
+async function handleVoiceConfirm(client, msg, config, log, stats, acct) {
   if (!msg?.author || !msg?.content) return false;
   if (msg.author.id !== client.user.id) return false;
 
-  if (!isPending()) return false;
+  if (!acct.confirm.isPending()) return false;
 
   // Confirm chỉ có hiệu lực trong channel đã bắt đầu confirm
-  if (getPendingChannel() !== msg.channel?.id) return false;
+  if (acct.confirm.getPendingChannel() !== msg.channel?.id) return false;
 
   const content = msg.content.trim().toLowerCase();
   if (content !== 'yes' && content !== 'no') return false;
 
-  if (isStreaming()) {
-    cancel();
+  if (acct.stream.isStreaming()) {
+    acct.confirm.cancel();
     const replyText = 'Đang stream — dùng .stream stop trước khi đổi voice';
     await sleep(computeTypingDelay(replyText, config));
     const sent = await msg.reply(replyText).catch(() => null);
-    if (sent) markCodeSent(sent.id);
+    if (sent) acct.afk.markCodeSent(sent.id);
     return true;
   }
 
   if (content === 'yes') {
-    const vs = getVoiceState();
+    const vs = acct.voice.getVoiceState();
 
     if (!vs.connected) {
-      cancel();
+      acct.confirm.cancel();
       const replyText = 'Không còn ở voice channel';
       await sleep(computeTypingDelay(replyText, config));
       const sent = await msg.reply(replyText).catch(() => null);
-      if (sent) markCodeSent(sent.id);
+      if (sent) acct.afk.markCodeSent(sent.id);
       return true;
     }
 
     try {
-      await leaveVoice({ logger: log, stats });
-      cancel();
+      await acct.voice.leaveVoice({ logger: log, stats });
+      acct.confirm.cancel();
       const replyText = '✓ Đã rời voice';
       await sleep(computeTypingDelay(replyText, config));
       const sent = await msg.reply(replyText).catch(() => null);
-      if (sent) markCodeSent(sent.id);
+      if (sent) acct.afk.markCodeSent(sent.id);
       log.cmd('Voice leave (confirmed by user)');
     } catch (e) {
-      cancel();
+      acct.confirm.cancel();
       const replyText = `Lỗi khi rời: ${e.message}`;
       await sleep(computeTypingDelay(replyText, config));
       const sent = await msg.reply(replyText).catch(() => null);
-      if (sent) markCodeSent(sent.id);
+      if (sent) acct.afk.markCodeSent(sent.id);
     }
 
     return true;
   }
 
   // "no"
-  cancel();
+  acct.confirm.cancel();
   const replyText = 'OK, ở lại voice';
   await sleep(computeTypingDelay(replyText, config));
   const sent = await msg.reply(replyText).catch(() => null);
-  if (sent) markCodeSent(sent.id);
+  if (sent) acct.afk.markCodeSent(sent.id);
   log.cmd('Voice leave cancelled (user said no)');
   return true;
 }
@@ -246,13 +239,13 @@ async function handleMessage(client, msg, config, log, dispatcher) {
 }
 
 // ── Auto-disable AFK ──────────────────────────────────────
-async function handleAutoDisable(client, msg, config, log) {
+async function handleAutoDisable(client, msg, config, log, acct) {
   if (!msg?.author) return;
   if (msg.author.id !== client.user.id) return;
-  if (!isAfk()) return;
-  if (isCodeSent(msg.id)) return;
+  if (!acct.afk.isAfk()) return;
+  if (acct.afk.isCodeSent(msg.id)) return;
 
-  const afkCfg = getAfkConfig();
+  const afkCfg = acct.afk.getConfig();
   if (!afkCfg.autoDisableOnActivity) return;
 
   const prefix = config.commands?.prefix || '.';
@@ -262,19 +255,19 @@ async function handleAutoDisable(client, msg, config, log) {
     if (name === 'afk') return;
   }
 
-  const { was, lastPing } = disableAfk();
+  const { was, lastPing } = acct.afk.disableAfk();
   if (!was) return;
 
-  log.cmd('AFK tự động tắt do He hoạt động');
+  log.cmd('AFK tự động tắt do có hoạt động');
 
   if (afkCfg.announceBack && lastPing?.channelId) {
     try {
       const channel = client.channels.cache.get(lastPing.channelId);
       if (channel?.send) {
-        const backMsg = renderBackMessage(lastPing.duration);
+        const backMsg = acct.afk.renderBackMessage(lastPing.duration);
         await sleep(computeTypingDelay(backMsg, config));
         const sent = await channel.send(backMsg).catch(() => null);
-        if (sent) markCodeSent(sent.id);
+        if (sent) acct.afk.markCodeSent(sent.id);
       }
     } catch (e) {
       log.debug(`AFK back announce fail: ${e.message}`);
@@ -283,17 +276,17 @@ async function handleAutoDisable(client, msg, config, log) {
 }
 
 // ── AFK ping handler ──────────────────────────────────────
-async function handleAfkPing(client, msg, config, log, stats) {
+async function handleAfkPing(client, msg, config, log, stats, acct) {
   if (!msg?.author) return;
-  if (!isAfk()) return;
+  if (!acct.afk.isAfk()) return;
 
-  const afkCfg = getAfkConfig();
+  const afkCfg = acct.afk.getConfig();
   const selfbotId = client.user.id;
 
   if (afkCfg.ignoreBots !== false && msg.author.bot) return;
   if (msg.author.id === selfbotId) return;
   if (msg.system) return;
-  if (shouldIgnore(msg.author.id, msg.channel?.id)) return;
+  if (acct.afk.shouldIgnore(msg.author.id, msg.channel?.id)) return;
 
   let pingType = null;
 
@@ -322,13 +315,13 @@ async function handleAfkPing(client, msg, config, log, stats) {
 
   if (!pingType) return;
 
-  if (!checkCooldown(msg.author.id)) {
+  if (!acct.afk.checkCooldown(msg.author.id)) {
     log.debug(`AFK: skip ${pingType} from ${msg.author.id} (cooldown)`);
     return;
   }
 
   const authorTag = msg.author.tag || msg.author.username || msg.author.id;
-  recordPing(msg.author.id, authorTag, msg.channel?.id, msg.id, msg.guild?.id);
+  acct.afk.recordPing(msg.author.id, authorTag, msg.channel?.id, msg.id, msg.guild?.id);
   stats?.bump?.('afkPings');
 
   if (afkCfg.reactEmoji) {
@@ -342,7 +335,7 @@ async function handleAfkPing(client, msg, config, log, stats) {
     return;
   }
 
-  const text = renderReply({ userId: msg.author.id, userTag: authorTag });
+  const text = acct.afk.renderReply({ userId: msg.author.id, userTag: authorTag });
 
   await sleep(computeTypingDelay(text, config));
 
@@ -353,9 +346,9 @@ async function handleAfkPing(client, msg, config, log, stats) {
     } else {
       sent = await msg.channel.send(text).catch(() => null);
     }
-    if (sent?.id) markCodeSent(sent.id);
+    if (sent?.id) acct.afk.markCodeSent(sent.id);
 
-    bumpReplyCount();
+    acct.afk.bumpReplyCount();
     stats?.bump?.('afkReplies');
 
     const guildName = msg.guild?.name || 'DM';

@@ -8,6 +8,17 @@ export function sleep(ms) {
   return new Promise((r) => setTimeout(r, n));
 }
 
+export function withTimeout(promise, ms, message) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    if (timer.unref) timer.unref();
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 export function randInt(min, max) {
   const a = Math.ceil(Math.min(min, max));
   const b = Math.floor(Math.max(min, max));
@@ -75,6 +86,55 @@ export function redactSecret(str) {
 
 export function sha12(input) {
   return crypto.createHash('sha256').update(String(input)).digest('hex').slice(0, 12);
+}
+
+/**
+ * Đọc tham chiếu kênh từ link Discord, cặp guild/channel hoặc ID trần.
+ * Trả về { guildId, channelId } (guildId = null với link @me) hoặc null.
+ */
+export function parseChannelRef(input) {
+  const text = String(input ?? '').trim();
+  if (!text) return null;
+
+  const link = text.match(/discord(?:app)?\.com\/channels\/(@me|\d{15,22})\/(\d{15,22})/i);
+  if (link) {
+    return { guildId: link[1].toLowerCase() === '@me' ? null : link[1], channelId: link[2] };
+  }
+
+  const pair = text.match(/^(\d{15,22})\s*[/:,\s]\s*(\d{15,22})$/);
+  if (pair) return { guildId: pair[1], channelId: pair[2] };
+
+  if (/^\d{15,22}$/.test(text)) return { guildId: null, channelId: text };
+  return null;
+}
+
+/** Lấy mọi channel ID trong một chuỗi (ID trần hoặc link), bỏ trùng, giữ thứ tự. */
+export function extractChannelIds(input) {
+  const text = String(input ?? '');
+  const linkRe = /discord(?:app)?\.com\/channels\/(?:@me|\d{15,22})\/(\d{15,22})/gi;
+  const ranges = [];
+  const hits = [];
+
+  for (const m of text.matchAll(linkRe)) {
+    hits.push({ at: m.index, id: m[1] });
+    ranges.push([m.index, m.index + m[0].length]);
+  }
+
+  const insideLink = (at) => ranges.some(([a, b]) => at >= a && at < b);
+  for (const m of text.matchAll(/\d{15,22}/g)) {
+    if (!insideLink(m.index)) hits.push({ at: m.index, id: m[0] });
+  }
+
+  hits.sort((a, b) => a.at - b.at);
+
+  const out = [];
+  const seen = new Set();
+  for (const h of hits) {
+    if (seen.has(h.id)) continue;
+    seen.add(h.id);
+    out.push(h.id);
+  }
+  return out;
 }
 
 export function fmtDur(sec) {

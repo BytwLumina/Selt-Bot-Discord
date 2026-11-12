@@ -36,6 +36,9 @@ function fit(s, n) {
 export function createDashboard(options = {}) {
   const headless = options.headless === true || !process.stdout.isTTY;
   let onQuitExternal = typeof options.onQuit === 'function' ? options.onQuit : () => {};
+  const onSwitchAccount = typeof options.onSwitchAccount === 'function'
+    ? options.onSwitchAccount
+    : null;
 
   // Headless: no blessed screen, no timers — plain stdout log stream only.
   if (headless) {
@@ -65,6 +68,7 @@ export function createDashboard(options = {}) {
       setAfk() {},
       setStream() {},
       setRpc() {},
+      setAccounts() {},
 
       onQuit(handler) {
         onQuitExternal = typeof handler === 'function' ? handler : () => {};
@@ -111,6 +115,8 @@ export function createDashboard(options = {}) {
     sessionMaxMin: 0,
     sessionElapsedMs: 0,
     running: false,
+    accounts: [],
+    focusedId: '',
     afk: {
       enabled: false,
       reason: '',
@@ -144,6 +150,8 @@ export function createDashboard(options = {}) {
       starting: false,
       startedAt: 0,
       viewerCount: 0,
+      paused: false,
+      region: '',
       channelName: '',
       guildName: '',
       lastError: '',
@@ -153,6 +161,11 @@ export function createDashboard(options = {}) {
       name: '',
       status: '',
       lastError: '',
+    },
+    owo: {
+      enabled: false,
+      paused: '',
+      catches: 0,
     },
   };
   let spinnerIdx = 0;
@@ -199,7 +212,7 @@ export function createDashboard(options = {}) {
     style: { border: { fg: 'cyan' }, fg: 'white' },
     label: ' Commands ',
     content:
-      ' {gray-fg}.voice  .stream  .rpc  .afk  .snipe  .editsnipe  ·  .cmd  .ping  .uptime  .exit{/gray-fg}',
+      ' {gray-fg}.voice  .stream  .rpc  .afk  .owo  .snipe  .editsnipe  ·  .cmd  .ping  .uptime  .exit{/gray-fg}',
   });
 
   // ── Log ──────────────────────────────────────────────────
@@ -238,12 +251,13 @@ export function createDashboard(options = {}) {
       return `{gray-fg}${lbl}{/gray-fg}${colored}  `;
     }
 
-    const sessionPct = state.sessionMaxMin > 0
-      ? Math.min(100, Math.floor((state.sessionElapsedMs / (state.sessionMaxMin * 60 * 1000)) * 100))
-      : 0;
+    const unlimited = state.sessionMaxMin <= 0;
+    const sessionPct = unlimited
+      ? 0
+      : Math.min(100, Math.floor((state.sessionElapsedMs / (state.sessionMaxMin * 60 * 1000)) * 100));
 
     const sessionColor =
-      sessionPct >= 90 ? 'red' : sessionPct >= 75 ? 'yellow' : 'green';
+      unlimited ? 'green' : sessionPct >= 90 ? 'red' : sessionPct >= 75 ? 'yellow' : 'green';
 
     const line1 =
       '  ' +
@@ -264,8 +278,8 @@ export function createDashboard(options = {}) {
     const line4 =
       '  ' +
       cell('Uptime', fmtUptime(state.sessionElapsedMs)) +
-      cell('Session', `${sessionPct}%`, sessionColor) +
-      cell('Max', state.sessionMaxMin > 0 ? `${state.sessionMaxMin}m` : '-');
+      cell('Session', unlimited ? 'vô hạn' : `${sessionPct}%`, sessionColor) +
+      cell('Max', unlimited ? '∞' : `${state.sessionMaxMin}m`);
 
     let afkLabel, afkColor;
     if (state.afk.enabled) {
@@ -376,11 +390,21 @@ export function createDashboard(options = {}) {
       const dur = state.stream.startedAt > 0
         ? fmtDur((Date.now() - state.stream.startedAt) / 1000)
         : '0s';
+      const liveLabel = state.stream.paused
+        ? '{yellow-fg}LIVE (paused){/yellow-fg}'
+        : '{red-fg}LIVE{/red-fg}';
       parts.push(
-        `{red-fg}LIVE{/red-fg} · {bold}${viewers} viewers{/bold} · ${dur}`
+        `${liveLabel} · {bold}${viewers} viewers{/bold} · ${dur}`
       );
     } else if (state.stream.starting) {
       parts.push('{yellow-fg}STREAM STARTING{/yellow-fg}');
+    }
+
+    if (state.owo.enabled) {
+      parts.push(`{green-fg}OwO farm{/green-fg}`);
+    } else if (state.owo.paused) {
+      const why = state.owo.paused === 'captcha' ? 'captcha' : (state.owo.paused === 'warning' ? 'cảnh báo' : 'mất kết nối');
+      parts.push(`{red-fg}OwO dừng (${why}){/red-fg}`);
     }
 
     if (state.rpc.enabled) {
@@ -397,6 +421,27 @@ export function createDashboard(options = {}) {
     parts.push(`{gray-fg}.cmd trong console · esc quit · ctrl+c force{/gray-fg}`);
 
     status.setContent(parts.join(' · '));
+  }
+
+  function refreshHeader() {
+    const list = Array.isArray(state.accounts) ? state.accounts : [];
+    const acctBits = list.length
+      ? list.map((a) => {
+          const focused = a.id === state.focusedId;
+          const label = fit(a.name || a.id, 12);
+          const safe = blessed.escape(label);
+          const tag = focused
+            ? `{cyan-fg}{bold}${safe}{/bold}{/cyan-fg}`
+            : `{gray-fg}${safe}{/gray-fg}`;
+          return a.ready ? tag : `${tag}{red-fg}*{/red-fg}`;
+        }).join(' {gray-fg}·{/gray-fg} ')
+      : '{gray-fg}(chưa có account){/gray-fg}';
+
+    header.setContent(
+      ` {bold}{cyan-fg}Lumina Selfbot{/cyan-fg}{/bold} {gray-fg}v${VERSION}{/gray-fg}` +
+      `  {gray-fg}Accounts:{/gray-fg} ${acctBits}` +
+      `  {gray-fg}· gateway · voice · stream · afk · snipe · rpc{/gray-fg}`
+    );
   }
 
   const tickTimer = setInterval(() => {
@@ -426,10 +471,14 @@ export function createDashboard(options = {}) {
 
   screen.key(['escape'], () => onQuitExternal());
   screen.key(['C-c'], () => onQuitExternal());
+  screen.key(['tab'], () => {
+    try { onSwitchAccount?.(); } catch {}
+  });
 
   refreshSession();
   refreshStats();
   refreshStatus();
+  refreshHeader();
 
   return {
     screen, header, sessionBox, statsBox, commandsBox, log, status,
@@ -519,11 +568,30 @@ export function createDashboard(options = {}) {
         starting: !!st.starting,
         startedAt: Number(st.startedAt) || 0,
         viewerCount: Number(st.viewerCount) || 0,
+        paused: !!st.paused,
+        region: st.region || '',
         channelName: st.channelName || '',
         guildName: st.guildName || '',
         lastError: st.lastError || '',
       };
       refreshStatus();
+      invalidate();
+    },
+
+    setAccounts(list, focusedId) {
+      state.accounts = Array.isArray(list) ? list : [];
+      state.focusedId = focusedId || '';
+      refreshHeader();
+      invalidate();
+    },
+
+    setOwo(owo) {
+      if (!owo) return;
+      state.owo = {
+        enabled: !!owo.enabled,
+        paused: owo.paused || '',
+        catches: owo.counters?.catches || 0,
+      };
       invalidate();
     },
 

@@ -1,17 +1,11 @@
-import { getVoiceState, joinVoice, leaveVoice, isVoiceChannel } from '../voiceSession.js';
-import {
-  startConfirm,
-  isPending,
-  getRemaining,
-  getPendingChannel,
-} from '../voiceConfirm.js';
-import { isStreaming } from '../stream.js';
+import { isVoiceChannel } from '../voiceSession.js';
+import { parseChannelRef } from '../utils.js';
 
 const CONFIRM_TTL_MS = 30000;
 const LIST_LIMIT = 25;
 const STREAM_BLOCK_MSG = 'Đang stream — dùng .stream stop trước khi đổi voice.';
 
-function startLeaveConfirm(vs, msg, reply) {
+function startLeaveConfirm(acct, vs, msg, reply) {
   const textChannelId = msg?.channel?.id ?? null;
 
   if (!vs.connected) {
@@ -22,15 +16,15 @@ function startLeaveConfirm(vs, msg, reply) {
   }
 
   // Chỉ nhắc lại nếu confirm đang chờ thuộc channel hiện tại
-  if (isPending() && getPendingChannel() === textChannelId) {
-    const remain = Math.ceil(getRemaining() / 1000);
+  if (acct.confirm.isPending() && acct.confirm.getPendingChannel() === textChannelId) {
+    const remain = Math.ceil(acct.confirm.getRemaining() / 1000);
     return reply(
       `Đang chờ xác nhận rời voice (còn ${remain}s).\n` +
       `Trả lời **yes** để rời, **no** để ở lại.`
     );
   }
 
-  startConfirm(textChannelId, CONFIRM_TTL_MS);
+  acct.confirm.startConfirm(textChannelId, CONFIRM_TTL_MS);
 
   return reply(
     `Bạn có muốn rời voice channel hiện tại không?\n` +
@@ -50,13 +44,13 @@ export async function register({ registerCommand }) {
     category: 'Voice',
     description: 'Voice: xem trạng thái, liệt kê kênh, join/leave',
     usage: '.voice status | .voice list [guild_id] | .voice leave | .voice <channel_id>',
-    handler: async ({ args, msg, client, config, reply, stats, logger }) => {
+    handler: async ({ args, msg, client, config, reply, stats, logger, acct }) => {
       const sub = (args[0] || '').trim();
       const cmd = sub.toLowerCase();
 
       // ── Case 0: Read-only — status ──────────────────────
       if (cmd === 'status') {
-        const vs = getVoiceState();
+        const vs = acct.voice.getVoiceState();
         const { guild, channel } = resolveVoiceNames(client, vs.guildId, vs.channelId);
 
         const lines = [
@@ -75,7 +69,7 @@ export async function register({ registerCommand }) {
 
       // ── Case 0b: Read-only — list ───────────────────────
       if (cmd === 'list') {
-        const vs = getVoiceState();
+        const vs = acct.voice.getVoiceState();
         const explicit = (args[1] || '').trim();
         const guildId = explicit || msg?.guild?.id || vs.guildId || null;
 
@@ -114,11 +108,11 @@ export async function register({ registerCommand }) {
       }
 
       // ── Stream guard: status/list vẫn chạy, join/leave bị chặn
-      if (isStreaming()) {
+      if (acct.stream.isStreaming()) {
         return reply(STREAM_BLOCK_MSG);
       }
 
-      const vs = getVoiceState();
+      const vs = acct.voice.getVoiceState();
 
       // ── Case 1: leave / không có channel ID → confirm ───
       if (cmd === 'leave' || !sub) {
@@ -128,23 +122,24 @@ export async function register({ registerCommand }) {
             return reply('Chưa ở voice channel nào.\nDùng: .voice <channel_id> để tham gia');
           }
           try {
-            await leaveVoice({ logger, stats });
+            await acct.voice.leaveVoice({ logger, stats });
             return reply('✓ Đã rời voice');
           } catch (e) {
             return reply(`Lỗi khi rời: ${e.message}`);
           }
         }
-        return startLeaveConfirm(vs, msg, reply);
+        return startLeaveConfirm(acct, vs, msg, reply);
       }
 
-      // ── Case 2: Có channel ID → join ────────────────────
-      // Tìm guild chứa channel
+      // ── Case 2: Có channel ID hoặc link → join ──────────
+      const ref = parseChannelRef(sub);
+      const targetId = ref?.channelId || sub;
       let guild = null;
       let channel = null;
 
       if (client.guilds?.cache) {
         for (const g of client.guilds.cache.values()) {
-          const c = g.channels?.cache?.get?.(sub);
+          const c = g.channels?.cache?.get?.(targetId);
           if (c) {
             guild = g;
             channel = c;
@@ -159,7 +154,7 @@ export async function register({ registerCommand }) {
 
       // Nếu đang ở voice khác → joinVoice tự leave channel cũ
       try {
-        await joinVoice({
+        await acct.voice.joinVoice({
           client,
           guildId: guild.id,
           channelId: channel.id,

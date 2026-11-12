@@ -3,9 +3,17 @@ node_modules/
 
 # Secrets
 tokens.txt
+accounts.json
 
 # Runtime state
 .afk.json
+.afk.*.json
+.owo.json
+.owo.*.json
+recordings/
+rpc.json.bak
+rpc.*.json.bak
+.shots/
 
 # Logs
 *.log

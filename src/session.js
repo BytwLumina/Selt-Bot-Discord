@@ -3,10 +3,14 @@ import path from 'node:path';
 import { sleep, fmtDur } from './utils.js';
 import { isShuttingDown } from './shutdown.js';
 
+const MAX_LOG_BYTES = 1024 * 1024;
+
 export function createSession({ config, logger, onWarn, onExpire }) {
   const startedAt = Date.now();
-  const maxMs = (config.sessionMaxMinutes || 360) * 60 * 1000;
-  const warnMs = (config.sessionWarnMinutes || 300) * 60 * 1000;
+  const maxMinutes = Number(config.sessionMaxMinutes) || 0;
+  const unlimited = maxMinutes <= 0;
+  const maxMs = unlimited ? 0 : maxMinutes * 60 * 1000;
+  const warnMs = unlimited ? 0 : (Number(config.sessionWarnMinutes) || 0) * 60 * 1000;
   const autoStop = config.sessionAutoStop !== false;
 
   let timer = null;
@@ -25,17 +29,19 @@ export function createSession({ config, logger, onWarn, onExpire }) {
   }
 
   function remainingMs() {
+    if (unlimited) return Infinity;
     return Math.max(0, maxMs - elapsedMs());
   }
 
   function percent() {
-    if (maxMs <= 0) return 0;
+    if (unlimited) return 0;
     return Math.min(100, Math.floor((elapsedMs() / maxMs) * 100));
   }
 
   function check() {
     if (stopped) return;
     if (isShuttingDown()) return;
+    if (unlimited) return;
 
     const elapsed = elapsedMs();
 
@@ -78,6 +84,7 @@ export function createSession({ config, logger, onWarn, onExpire }) {
       elapsed: elapsedMs(),
       remaining: remainingMs(),
       maxMs,
+      unlimited,
       percent: percent(),
       warned,
       expired,
@@ -92,7 +99,7 @@ export function createSession({ config, logger, onWarn, onExpire }) {
     elapsedMs,
     remainingMs,
     percent,
-    isExpired: () => elapsedMs() >= maxMs,
+    isExpired: () => !unlimited && elapsedMs() >= maxMs,
     isWarned: () => warned,
   };
 }
@@ -108,6 +115,15 @@ export function logSessionEnd({ session, path: logPath, logger }) {
       maxSec: Math.floor(snap.maxMs / 1000),
     });
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
+
+    const st = fs.statSync(logPath, { throwIfNoEntry: false });
+    if (st && st.size > MAX_LOG_BYTES) {
+      try {
+        fs.rmSync(`${logPath}.1`, { force: true });
+        fs.renameSync(logPath, `${logPath}.1`);
+      } catch {}
+    }
+
     fs.appendFileSync(logPath, line + '\n');
   } catch (e) {
     logger?.warn(`Session log fail: ${e.message}`);

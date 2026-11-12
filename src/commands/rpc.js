@@ -1,4 +1,3 @@
-import { getRpcState, reloadRPC, suspendRPC } from '../rpc.js';
 import { fmtDur } from '../utils.js';
 
 export async function register({ registerCommand }) {
@@ -7,12 +6,13 @@ export async function register({ registerCommand }) {
     description: 'Xem, reload hoặc tắt Rich Presence',
     usage: '.rpc [status|reload|on|off]',
     aliases: ['presence'],
-    handler: async ({ args, reply }) => {
+    handler: async ({ args, reply, acct }) => {
+      const rpc = acct.rpc;
       const sub = String(args[0] || 'status').toLowerCase();
 
       if (sub === 'reload' || sub === 'on') {
-        const activity = await reloadRPC({ force: sub === 'on' });
-        const st = getRpcState();
+        const activity = await rpc.reloadRPC({ force: sub === 'on' });
+        const st = rpc.getRpcState();
 
         if (!activity) {
           return reply(
@@ -28,12 +28,12 @@ export async function register({ registerCommand }) {
       }
 
       if (sub === 'off') {
-        suspendRPC();
+        rpc.suspendRPC();
         return reply('Đã tắt RPC tạm thời. Dùng .rpc on để bật lại.');
       }
 
       if (sub === 'status' || sub === 'info') {
-        const st = getRpcState();
+        const st = rpc.getRpcState();
         const stateLabel = st.suspended
           ? 'tạm tắt'
           : st.enabled
